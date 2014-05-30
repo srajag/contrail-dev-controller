@@ -42,6 +42,9 @@ struct NextHop {
             tunnel_encapsulations_.push_back("gre");
             tunnel_encapsulations_.push_back("udp");
             tunnel_encapsulations_.push_back("vxlan");
+        } else if (tun1 == "all_ipv6") {
+            tunnel_encapsulations_.push_back("gre");
+            tunnel_encapsulations_.push_back("udp");
         } else {
             tunnel_encapsulations_.push_back(tun1);
         }
@@ -88,12 +91,14 @@ public:
     pugi::xml_document *RouteDeleteXmlDoc(const std::string &network, 
                                           const std::string &prefix,
         NextHops nexthops = NextHops());
+
     pugi::xml_document *Inet6RouteAddXmlDoc(const std::string &network,
-                                            const std::string &prefix,
-                                            NextHops nexthops = NextHops());
+        const std::string &prefix, NextHops nexthops, 
+        const std::vector<int> &sgids);
     pugi::xml_document *Inet6RouteDeleteXmlDoc(const std::string &network,
-                                               const std::string &prefix,
-                                               NextHops nexthops = NextHops());
+        const std::string &prefix, NextHops nexthops,
+        const std::vector<int> &sgids);
+
     pugi::xml_document *RouteEnetAddXmlDoc(const std::string &network,
                                            const std::string &prefix,
         NextHops nexthops = NextHops());
@@ -124,7 +129,8 @@ private:
     pugi::xml_document *RouteAddDeleteXmlDoc(const std::string &network,
             const std::string &prefix, bool add, NextHops nexthop);
     pugi::xml_document *Inet6RouteAddDeleteXmlDoc(const std::string &network,
-            const std::string &prefix, bool add, NextHops nexthops);
+            const std::string &prefix, bool add, NextHops nexthops,
+            const std::vector<int>& sgids);
     pugi::xml_document *RouteEnetAddDeleteXmlDoc(const std::string &network,
             const std::string &prefix, const std::string nexthop, bool add);
     pugi::xml_document *RouteEnetAddDeleteXmlDoc(const std::string &network,
@@ -264,9 +270,11 @@ public:
                   NextHops nexthops);
 
     void AddInet6Route(const std::string &network, const std::string &prefix,
-                       const std::string nexthop = "");
+        const std::string &nexthop = "", const std::string &encap = "",
+        const std::vector<int>& sgids = std::vector<int>());
     void DeleteInet6Route(const std::string &network, const std::string &prefix,
-                          const std::string nexthop = "");
+        const std::string &nexthop = "", const std::string &encap = "",
+        const std::vector<int>& sgids = std::vector<int>());
 
     void EnetSubscribe(const std::string &network, int id = -1,
                        bool wait_for_established = true) {
