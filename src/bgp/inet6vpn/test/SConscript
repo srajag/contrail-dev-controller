@@ -18,9 +18,9 @@ env.Append(LIBPATH = env['TOP'] + '/base/test')
 env.Append(LIBPATH = env['TOP'] + '/bgp')
 env.Append(LIBPATH = env['TOP'] + '/bgp/inet')
 env.Append(LIBPATH = env['TOP'] + '/bgp/inet6')
-env.Append(LIBPATH = env['TOP'] + '/bgp/inetmcast')
 env.Append(LIBPATH = env['TOP'] + '/bgp/enet')
 env.Append(LIBPATH = env['TOP'] + '/bgp/evpn')
+env.Append(LIBPATH = env['TOP'] + '/bgp/ermvpn')
 env.Append(LIBPATH = env['TOP'] + '/bgp/test')
 env.Append(LIBPATH = env['TOP'] + '/bgp/inet6')
 env.Append(LIBPATH = env['TOP'] + '/bgp/l3vpn')
@@ -69,7 +69,7 @@ env.Prepend(LIBS = [
                     'xmpp',
                     'bgp_inet',
                     'bgp_inet6',
-                    'bgp_inetmcast',
+                    'bgp_ermvpn',
                     'bgp_enet',
                     'bgp_evpn',
                     'bgp_inet6',
@@ -87,13 +87,13 @@ if sys.platform != 'darwin':
     env.Append(LIBS=['rt'])
     env.Prepend(LINKFLAGS = ['-Wl,--whole-archive',
                              '-lbgp_inet',
-                             '-lbgp_inetmcast',
                              '-lbgp_enet',
                              '-lbgp_evpn',
                              '-lbgp_l3vpn',
                              '-lbgp_inet6',
                              '-lbgp_inet6vpn',
                              '-lrtarget',
+                             '-lbgp_ermvpn',
                              '-ltask_test',
                              '-Wl,--no-whole-archive'])
 
