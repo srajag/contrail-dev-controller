@@ -75,26 +75,18 @@ private:
 class BgpXmppChannelManagerMock : public BgpXmppChannelManager {
 public:
     BgpXmppChannelManagerMock(XmppServer *x, BgpServer *b) :
-        BgpXmppChannelManager(x, b), count(0), channels(0) { }
+        BgpXmppChannelManager(x, b) { }
 
     virtual void XmppHandleChannelEvent(XmppChannel *channel,
                                         xmps::PeerState state) {
-         count++;
          BgpXmppChannelManager::XmppHandleChannelEvent(channel, state);
     }
 
     virtual BgpXmppChannel *CreateChannel(XmppChannel *channel) {
-        channel_[channels] = new BgpXmppChannelMock(channel, bgp_server_, this);
-        channels++;
-        return channel_[channels-1];
+        BgpXmppChannel *mock_channel =
+            new BgpXmppChannelMock(channel, bgp_server_, this);
+        return mock_channel;
     }
-
-    int Count() {
-        return count;
-    }
-    int count;
-    int channels;
-    BgpXmppChannelMock *channel_[2];
 };
 
 static const char *one_cn_unconnected_instances_config = "\
@@ -5211,6 +5203,79 @@ TEST_F(BgpXmppInet6Test2Peers, ImportExportWithBgpConnectLater) {
     agent_b_->SessionDown();
     agent_y1_->SessionDown();
     agent_y2_->SessionDown();
+}
+
+class BgpXmppInet6ErrorTest : public BgpXmppInet6Test {
+protected:
+    virtual void SetUp() {
+        BgpXmppInet6Test::SetUp();
+
+        Configure(one_cn_unconnected_instances_config);
+        task_util::WaitForIdle();
+
+        agent_a_.reset(new test::NetworkAgentMock(
+                       &evm_, "agent-a", xmpp_server_->GetPort(), "127.0.0.1"));
+        TASK_UTIL_EXPECT_TRUE(agent_a_->IsEstablished());
+        agent_a_->Inet6Subscribe("blue", 1);
+        task_util::WaitForIdle();
+    }
+
+    virtual void TearDown() {
+        agent_a_->SessionDown();
+        task_util::WaitForIdle();
+
+        BgpXmppInet6Test::TearDown();
+    }
+};
+
+TEST_F(BgpXmppInet6ErrorTest, BadPrefix) {
+    BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    EXPECT_TRUE(channel != NULL);
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_prefix(), 0);
+    // Prefix has two "::"'s.
+    agent_a_->AddInet6Route("blue", "2001:db8:85a3::8a2e::370:aaaa/128",
+                            "192.168.1.1");
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_prefix(), 1);
+}
+
+TEST_F(BgpXmppInet6ErrorTest, BadNexthop) {
+    BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    EXPECT_TRUE(channel != NULL);
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_nexthop(), 0);
+    // Nexthop is formatted incorrectly.
+    agent_a_->AddInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
+                            "192.168.11");
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_nexthop(), 1);
+}
+
+TEST_F(BgpXmppInet6ErrorTest, BadRouteAfiSafi) {
+    BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    EXPECT_TRUE(channel != NULL);
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_address_family(), 0);
+    // Create a route with incorrect afi.
+    agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
+                                 "192.168.1.1", test::ROUTE_AF_ERROR);
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_address_family(), 1);
+
+    // Create a route with incorrect safi.
+    agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e::370:aaaa/128",
+                                 "192.168.1.1", test::ROUTE_SAFI_ERROR);
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_address_family(), 2);
+}
+
+TEST_F(BgpXmppInet6ErrorTest, BadXmlToken) {
+    BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    EXPECT_TRUE(channel != NULL);
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_xml_token_count(), 0);
+    // Create a route that sends an incorrect xml message to the controller.
+    agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
+                                 "192.168.1.1", test::XML_TOKEN_ERROR);
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(channel->get_rx_inet6_bad_xml_token_count(), 1);
 }
 
 class TestEnvironment : public ::testing::Environment {

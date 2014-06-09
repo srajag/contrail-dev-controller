@@ -34,6 +34,12 @@ class BgpXmppChannelManager;
 
 namespace test {
 
+enum TestErrorType {
+    ROUTE_AF_ERROR,
+    ROUTE_SAFI_ERROR,
+    XML_TOKEN_ERROR,
+};
+
 struct NextHop {
     NextHop() : label_(0) { }
     NextHop(std::string address, uint32_t label, std::string tun1 = "gre") :
@@ -98,6 +104,8 @@ public:
     pugi::xml_document *Inet6RouteDeleteXmlDoc(const std::string &network,
         const std::string &prefix, NextHops nexthops,
         const std::vector<int> &sgids);
+    pugi::xml_document *Inet6RouteAddBogusXmlDoc(const std::string &network,
+        const std::string &prefix, NextHops nexthops, TestErrorType error_type);
 
     pugi::xml_document *RouteEnetAddXmlDoc(const std::string &network,
                                            const std::string &prefix,
@@ -275,6 +283,9 @@ public:
     void DeleteInet6Route(const std::string &network, const std::string &prefix,
         const std::string &nexthop = "", const std::string &encap = "",
         const std::vector<int>& sgids = std::vector<int>());
+    void AddBogusInet6Route(const std::string &network_name,
+        const std::string &prefix, const std::string &nexthop,
+        TestErrorType error_type);
 
     void EnetSubscribe(const std::string &network, int id = -1,
                        bool wait_for_established = true) {

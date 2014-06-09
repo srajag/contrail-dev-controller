@@ -53,6 +53,11 @@ using std::string;
 using std::vector;
 using boost::system::error_code;
 
+BgpXmppChannel::ErrorStats::ErrorStats()
+    : inet6_bad_xml_token_count(0), inet6_bad_prefix_count(0),
+      inet6_bad_nexthop_count(0), inet6_bad_address_family_count(0) {
+}
+
 BgpXmppChannel::Stats::Stats()
     : rt_updates(0), reach(0), unreach(0) {
 }
@@ -198,15 +203,15 @@ public:
     }
 
     virtual void GetRxRouteUpdateStats(UpdateStats &stats)  const {
-        stats.total = peer_->stats_[0].rt_updates;
-        stats.reach = peer_->stats_[0].reach;
-        stats.unreach = peer_->stats_[0].unreach;
+        stats.total = peer_->stats_[RX].rt_updates;
+        stats.reach = peer_->stats_[RX].reach;
+        stats.unreach = peer_->stats_[RX].unreach;
     }
 
     virtual void GetTxRouteUpdateStats(UpdateStats &stats)  const {
-        stats.total = peer_->stats_[1].rt_updates;
-        stats.reach = peer_->stats_[1].reach;
-        stats.unreach = peer_->stats_[1].unreach;
+        stats.total = peer_->stats_[TX].rt_updates;
+        stats.reach = peer_->stats_[TX].reach;
+        stats.unreach = peer_->stats_[TX].unreach;
     }
 
     virtual void GetRxSocketStats(SocketStats &stats)  const {
@@ -235,11 +240,11 @@ public:
     }
 
     virtual void UpdateTxUnreachRoute(uint32_t count) {
-        peer_->stats_[1].unreach += count;
+        peer_->stats_[TX].unreach += count;
     }
 
     virtual void UpdateTxReachRoute(uint32_t count) {
-        peer_->stats_[1].reach += count;
+        peer_->stats_[TX].reach += count;
     }
 
 private:
@@ -351,7 +356,7 @@ static bool SkipUpdateSend() {
 bool BgpXmppChannel::XmppPeer::SendUpdate(const uint8_t *msg, size_t msgsize) {
     XmppChannel *channel = parent_->channel_;
     if (channel->GetPeerState() == xmps::READY) {
-        parent_->stats_[1].rt_updates ++;
+        parent_->stats_[TX].rt_updates ++;
         if (SkipUpdateSend()) return true;
         send_ready_ = channel->Send(msg, msgsize, xmps::BGP,
                 boost::bind(&BgpXmppChannel::XmppPeer::WriteReadyCb, this, _1));
@@ -745,10 +750,10 @@ void BgpXmppChannel::ProcessMcastItem(std::string vrf_name,
 
         BgpAttrPtr attr = bgp_server_->attr_db()->Locate(attrs);
         req.data.reset(new ErmVpnTable::RequestData(attr, flags, 0));
-        stats_[0].reach++;
+        stats_[RX].reach++;
     } else {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        stats_[0].unreach++;
+        stats_[RX].unreach++;
     }
 
 
@@ -990,10 +995,10 @@ void BgpXmppChannel::ProcessItem(string vrf_name,
         BgpAttrPtr attr = bgp_server_->attr_db()->Locate(attrs);
 
         req.data.reset(new InetTable::RequestData(attr, nexthops));
-        stats_[0].reach++;
+        stats_[RX].reach++;
     } else {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        stats_[0].unreach++;
+        stats_[RX].unreach++;
     }
 
     // Defer all route requests till register request is processed
@@ -1025,13 +1030,16 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     item.Clear();
 
     if (!item.XmlParse(node)) {
+        incr_rx_inet6_bad_xml_token_count();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Invalid message received");
         return;
     }
 
     // NLRI ipaddress/mask
-    if (item.entry.nlri.af != BgpAf::IPv6) {
+    if ((item.entry.nlri.af != BgpAf::IPv6) ||
+        (item.entry.nlri.safi != BgpAf::Unicast)) {
+        incr_rx_inet6_bad_address_family();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Unsupported address family");
         return;
@@ -1041,17 +1049,16 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     Inet6Prefix rt_prefix = Inet6Prefix::FromString(item.entry.nlri.address,
                                                     &error);
     if (error) {
+        incr_rx_inet6_bad_prefix();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
-                              BGP_LOG_FLAG_ALL,
-                             "Bad address string: " << item.entry.nlri.address);
+           BGP_LOG_FLAG_ALL, "Bad address string: " << item.entry.nlri.address);
         return;
     }
 
     RoutingInstanceMgr *instance_mgr = bgp_server_->routing_instance_mgr();
     if (!instance_mgr) {
-        BGP_LOG_PEER(Message, Peer(), SandeshLevel::SYS_WARN,
-                     BGP_LOG_FLAG_ALL, BGP_PEER_DIR_IN,
-                     " ProcessItem: Routing Instance Manager not found");
+        BGP_LOG_PEER(Message, Peer(), SandeshLevel::SYS_WARN, BGP_LOG_FLAG_ALL,
+           BGP_PEER_DIR_IN, " ProcessItem: Routing Instance Manager not found");
         return;
     }
 
@@ -1135,6 +1142,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
                           item.entry.next_hops.next_hop[i].af,
                           item.entry.next_hops.next_hop[i].address,
                           &nhop_address))) {
+                    incr_rx_inet6_bad_nexthop();
                     BGP_LOG_PEER(Message, Peer(), SandeshLevel::SYS_WARN,
                         BGP_LOG_FLAG_ALL, BGP_PEER_DIR_IN,
                         "Error parsing nexthop address:" <<
@@ -1220,10 +1228,10 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
         BgpAttrPtr attr = bgp_server_->attr_db()->Locate(attrs);
 
         req.data.reset(new Inet6Table::RequestData(attr, nexthops));
-        stats_[0].reach++;
+        stats_[RX].reach++;
     } else {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        stats_[0].unreach++;
+        stats_[RX].unreach++;
     }
 
     // Defer all route requests till register request is processed
@@ -1446,10 +1454,10 @@ void BgpXmppChannel::ProcessEnetItem(string vrf_name,
         BgpAttrPtr attr = bgp_server_->attr_db()->Locate(attrs);
 
         req.data.reset(new EnetTable::RequestData(attr, nexthops));
-        stats_[0].reach++;
+        stats_[RX].reach++;
     } else {
         req.oper = DBRequest::DB_ENTRY_DELETE;
-        stats_[0].unreach++;
+        stats_[RX].unreach++;
     }
 
     // Defer all route requests till register request is processed
@@ -1903,7 +1911,7 @@ void BgpXmppChannel::ReceiveUpdate(const XmppStanza::XmppMessage *msg) {
                 ProcessSubscriptionRequest(iq->node, iq, false);
             } else if (iq->action.compare("publish") == 0) {
                 XmlBase *impl = msg->dom.get();
-                stats_[0].rt_updates++;
+                stats_[RX].rt_updates++;
                 XmlPugi *pugi = reinterpret_cast<XmlPugi *>(impl);
                 for (xml_node item = pugi->FindNode("item"); item;
                     item = item.next_sibling()) {

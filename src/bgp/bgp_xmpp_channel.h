@@ -34,11 +34,22 @@ class XmppSession;
 
 class BgpXmppChannel {
 public:
+    enum StatsIndex {
+        RX,
+        TX,
+    };
     struct Stats {
         Stats();
         int rt_updates;
         int reach;
         int unreach;
+    };
+    struct ErrorStats {
+        ErrorStats();
+        int inet6_bad_xml_token_count;
+        int inet6_bad_prefix_count;
+        int inet6_bad_nexthop_count;
+        int inet6_bad_address_family_count;
     };
 
     BgpXmppChannel(XmppChannel *, BgpServer *, BgpXmppChannelManager *);
@@ -53,8 +64,33 @@ public:
     boost::asio::ip::tcp::endpoint local_endpoint();
 
     const XmppSession *GetSession() const;
-    const Stats &rx_stats() const { return stats_[0]; }
-    const Stats &tx_stats() const { return stats_[1]; }
+    const Stats &rx_stats() const { return stats_[RX]; }
+    const Stats &tx_stats() const { return stats_[TX]; }
+    const ErrorStats &error_stats() const { return error_stats_; }
+    void incr_rx_inet6_bad_xml_token_count() {
+        error_stats_.inet6_bad_xml_token_count++;
+    }
+    int get_rx_inet6_bad_xml_token_count() {
+        return error_stats_.inet6_bad_xml_token_count;
+    }
+    void incr_rx_inet6_bad_prefix() {
+        error_stats_.inet6_bad_prefix_count++;
+    }
+    int get_rx_inet6_bad_prefix() {
+        return error_stats_.inet6_bad_prefix_count;
+    }
+    void incr_rx_inet6_bad_nexthop() {
+        error_stats_.inet6_bad_nexthop_count++;
+    }
+    int get_rx_inet6_bad_nexthop() {
+        return error_stats_.inet6_bad_nexthop_count;
+    }
+    void incr_rx_inet6_bad_address_family() {
+        error_stats_.inet6_bad_address_family_count++;
+    }
+    int get_rx_inet6_bad_address_family() {
+        return error_stats_.inet6_bad_address_family_count;
+    }
     void set_deleted(bool deleted) { deleted_ = deleted; }
     bool deleted() { return deleted_; }
     void RoutingInstanceCallback(std::string vrf_name, int op);
@@ -153,6 +189,7 @@ private:
 
     // statistics
     Stats stats_[2];
+    ErrorStats error_stats_;
 
     // Label block manager for multicast labels.
     LabelBlockManagerPtr lb_mgr_;

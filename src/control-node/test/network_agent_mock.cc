@@ -440,6 +440,62 @@ pugi::xml_document *XmppDocumentMock::Inet6RouteAddDeleteXmlDoc(
     return xdoc_.get();
 }
 
+pugi::xml_document *XmppDocumentMock::Inet6RouteAddBogusXmlDoc(
+        const std::string &network, const std::string &prefix,
+        NextHops nexthops, TestErrorType error_type) {
+    xdoc_->reset();
+    xml_node pubsub = PubSubHeader(kNetworkServiceJID);
+    xml_node pub = pubsub.append_child("publish");
+    stringstream header;
+    header << BgpAf::IPv6 << "/" <<  BgpAf::Unicast << "/" <<
+              network.c_str() << "/" << prefix.c_str();
+    pub.append_attribute("node") = header.str().c_str();
+    autogen::ItemType rt_entry;
+    rt_entry.Clear();
+    if (error_type == ROUTE_AF_ERROR) {
+        // Set incorrect afi value
+        rt_entry.entry.nlri.af = BgpAf::IPv4;
+    } else {
+        rt_entry.entry.nlri.af = BgpAf::IPv6;
+    }
+    if (error_type == ROUTE_SAFI_ERROR) {
+        // Set incorrect safi value
+        rt_entry.entry.nlri.safi = BgpAf::EVpn;
+    } else {
+        rt_entry.entry.nlri.safi = BgpAf::Unicast;
+    }
+    rt_entry.entry.nlri.address = prefix;
+    rt_entry.entry.security_group_list.security_group.push_back(101);
+
+    BOOST_FOREACH(NextHop nexthop, nexthops) {
+        autogen::NextHopType item_nexthop;
+
+        item_nexthop.af = BgpAf::IPv4;
+        assert(!nexthop.address_.empty());
+        item_nexthop.address = nexthop.address_;
+        item_nexthop.label = 0xFFFFF;
+        item_nexthop.tunnel_encapsulation_list.tunnel_encapsulation.
+            push_back(nexthop.tunnel_encapsulations_[0]);
+        rt_entry.entry.next_hops.next_hop.push_back(item_nexthop);
+    }
+
+    xml_node item = pub.append_child("item");
+    if (error_type == XML_TOKEN_ERROR) {
+        xml_node n0 = item.append_child("entry");
+        xml_node n1 = n0.append_child("nlri");
+        xml_node n2 = n1.append_child("af");
+        n2.text().set("some_junk");
+    } else {
+        rt_entry.Encode(&item);
+    }
+    pubsub = PubSubHeader(kNetworkServiceJID);
+    xml_node collection = pubsub.append_child("collection");
+    collection.append_attribute("node") = network.c_str();
+    xml_node assoc = collection.append_child("associate");
+    assoc.append_attribute("node") = header.str().c_str();
+    return xdoc_.get();
+}
+
 pugi::xml_document *XmppDocumentMock::RouteEnetAddDeleteXmlDoc(
         const std::string &network, const std::string &prefix,
         NextHops nexthops, bool add) {
@@ -841,6 +897,17 @@ void NetworkAgentMock::DeleteInet6Route(const string &network_name,
     AgentPeer *peer = GetAgent();
     xml_document *xdoc = impl_->Inet6RouteDeleteXmlDoc(network_name, prefix,
                                                        nexthops, sgids);
+    peer->SendDocument(xdoc);
+}
+
+void NetworkAgentMock::AddBogusInet6Route(const string &network_name,
+        const string &prefix, const string &nexthop, TestErrorType error_type) {
+    NextHops nexthops;
+    nexthops.push_back(NextHop(nexthop, 0));
+
+    AgentPeer *peer = GetAgent();
+    xml_document *xdoc = impl_->Inet6RouteAddBogusXmlDoc(network_name, prefix,
+                                                         nexthops, error_type);
     peer->SendDocument(xdoc);
 }
 
