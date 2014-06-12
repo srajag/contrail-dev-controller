@@ -26,6 +26,7 @@ public:
     std::string ToString() const;
     bool IsMoreSpecific(const Inet6VpnPrefix &rhs) const;
     int CompareTo(const Inet6VpnPrefix &other) const;
+    bool operator==(const Inet6VpnPrefix &rhs) const;
 
     RouteDistinguisher route_distinguisher() const { return rd_; }
     Ip6Address addr() const { return addr_; }

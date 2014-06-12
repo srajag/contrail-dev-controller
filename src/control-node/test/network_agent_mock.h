@@ -85,6 +85,11 @@ typedef std::vector<NextHop> NextHops;
 
 class XmppDocumentMock {
 public:
+    enum Oper {
+        ADD,
+        CHANGE,
+        DELETE,
+    };
     static const char *kControlNodeJID;
     static const char *kNetworkServiceJID;
     static const char *kConfigurationServiceJID;
@@ -100,6 +105,9 @@ public:
 
     pugi::xml_document *Inet6RouteAddXmlDoc(const std::string &network,
         const std::string &prefix, NextHops nexthops, 
+        const std::vector<int> &sgids);
+    pugi::xml_document *Inet6RouteChangeXmlDoc(const std::string &network,
+        const std::string &prefix, NextHops nexthops,
         const std::vector<int> &sgids);
     pugi::xml_document *Inet6RouteDeleteXmlDoc(const std::string &network,
         const std::string &prefix, NextHops nexthops,
@@ -137,7 +145,7 @@ private:
     pugi::xml_document *RouteAddDeleteXmlDoc(const std::string &network,
             const std::string &prefix, bool add, NextHops nexthop);
     pugi::xml_document *Inet6RouteAddDeleteXmlDoc(const std::string &network,
-            const std::string &prefix, bool add, NextHops nexthops,
+            const std::string &prefix, Oper oper, NextHops nexthops,
             const std::vector<int>& sgids);
     pugi::xml_document *RouteEnetAddDeleteXmlDoc(const std::string &network,
             const std::string &prefix, const std::string nexthop, bool add);
@@ -278,6 +286,9 @@ public:
                   NextHops nexthops);
 
     void AddInet6Route(const std::string &network, const std::string &prefix,
+        const std::string &nexthop = "", const std::string &encap = "",
+        const std::vector<int>& sgids = std::vector<int>());
+    void ChangeInet6Route(const std::string &network, const std::string &prefix,
         const std::string &nexthop = "", const std::string &encap = "",
         const std::vector<int>& sgids = std::vector<int>());
     void DeleteInet6Route(const std::string &network, const std::string &prefix,

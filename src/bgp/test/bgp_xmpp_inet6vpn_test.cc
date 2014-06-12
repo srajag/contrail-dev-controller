@@ -1399,7 +1399,7 @@ TEST_F(BgpXmppInet6Test2Peers, Add1Route) {
 
     // Add route from agent A.
     stringstream route_a;
-    route_a << "2001:0db8:85a3:0000:0000:8a2e:0000:0000/96";
+    route_a << "2001:db8:85a3::8a2e:0:0/96";
     agent_a_->AddInet6Route("blue", route_a.str(), "192.168.1.1");
     task_util::WaitForIdle();
 
@@ -1407,7 +1407,7 @@ TEST_F(BgpXmppInet6Test2Peers, Add1Route) {
     TASK_UTIL_EXPECT_EQ(1, agent_a_->Inet6RouteCount());
     TASK_UTIL_EXPECT_EQ(1, agent_a_->Inet6RouteCount("blue"));
     const autogen::ItemType *rt_a =
-        agent_a_->Inet6RouteLookup("blue", "2001:db8:85a3::8a2e:0:0/96");
+        agent_a_->Inet6RouteLookup("blue", route_a.str());
     TASK_UTIL_EXPECT_TRUE(rt_a != NULL);
     int label_a = rt_a->entry.next_hops.next_hop[0].label;
     string nh_a = rt_a->entry.next_hops.next_hop[0].address;
@@ -1419,7 +1419,7 @@ TEST_F(BgpXmppInet6Test2Peers, Add1Route) {
     TASK_UTIL_EXPECT_EQ(1, agent_b_->Inet6RouteCount());
     TASK_UTIL_EXPECT_EQ(1, agent_b_->Inet6RouteCount("blue"));
     const autogen::ItemType *rt_b =
-        agent_b_->Inet6RouteLookup("blue", "2001:db8:85a3::8a2e:0:0/96");
+        agent_b_->Inet6RouteLookup("blue", route_a.str());
     TASK_UTIL_EXPECT_TRUE(rt_b != NULL);
     int label_b = rt_b->entry.next_hops.next_hop[0].label;
     string nh_b = rt_b->entry.next_hops.next_hop[0].address;
@@ -1430,6 +1430,88 @@ TEST_F(BgpXmppInet6Test2Peers, Add1Route) {
     // Verify that label and nh are the same on agents A and B.
     TASK_UTIL_EXPECT_EQ(label_a, label_b);
     TASK_UTIL_EXPECT_EQ(nh_a, nh_b);
+
+    // Delete route from agent A.
+    agent_a_->DeleteInet6Route("blue", route_a.str());
+    task_util::WaitForIdle();
+
+    // Verify that there are no routes on the agents.
+    TASK_UTIL_EXPECT_EQ(0, agent_a_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(0, agent_a_->Inet6RouteCount("blue"));
+    TASK_UTIL_EXPECT_EQ(0, agent_b_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(0, agent_b_->Inet6RouteCount("blue"));
+
+    // Close the sessions.
+    agent_a_->SessionDown();
+    agent_b_->SessionDown();
+}
+
+TEST_F(BgpXmppInet6Test2Peers, Add1RouteTwice) {
+    Configure(two_cns_unconnected_instances_config);
+    task_util::WaitForIdle();
+
+    // Create XMPP Agent A connected to XMPP server 1.
+    agent_a_.reset(
+        new test::NetworkAgentMock(&evm_, "agent-a", xmpp_server1_->GetPort(),
+            "127.0.0.1", "127.0.0.1"));
+    TASK_UTIL_EXPECT_TRUE(agent_a_->IsEstablished());
+
+    // Create XMPP Agent B connected to XMPP server 2.
+    agent_b_.reset(
+        new test::NetworkAgentMock(&evm_, "agent-b", xmpp_server2_->GetPort(),
+            "127.0.0.2", "127.0.0.2"));
+    TASK_UTIL_EXPECT_TRUE(agent_b_->IsEstablished());
+
+    // Register to blue instance
+    agent_a_->Inet6Subscribe("blue", 1);
+    agent_b_->Inet6Subscribe("blue", 1);
+
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_EQ(0, agent_a_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(0, agent_a_->Inet6RouteCount("blue"));
+    TASK_UTIL_EXPECT_EQ(0, agent_b_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(0, agent_b_->Inet6RouteCount("blue"));
+
+    // Add route from agent A.
+    stringstream route_a;
+    route_a << "2001:db8:85a3::8a2e:0:0/96";
+    agent_a_->AddInet6Route("blue", route_a.str(), "192.168.1.1");
+    task_util::WaitForIdle();
+
+    // Verify that route showed up on agent A.
+    TASK_UTIL_EXPECT_EQ(1, agent_a_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(1, agent_a_->Inet6RouteCount("blue"));
+    const autogen::ItemType *rt_a = agent_a_->Inet6RouteLookup("blue",
+                                                               route_a.str());
+    TASK_UTIL_EXPECT_TRUE(rt_a != NULL);
+    int label_a = rt_a->entry.next_hops.next_hop[0].label;
+    string nh_a = rt_a->entry.next_hops.next_hop[0].address;
+    TASK_UTIL_EXPECT_NE(0xFFFFF, label_a);
+    TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_a);
+    TASK_UTIL_EXPECT_EQ("blue", rt_a->entry.virtual_network);
+
+    // Verify that route showed up on agent B.
+    TASK_UTIL_EXPECT_EQ(1, agent_b_->Inet6RouteCount());
+    TASK_UTIL_EXPECT_EQ(1, agent_b_->Inet6RouteCount("blue"));
+    const autogen::ItemType *rt_b = agent_b_->Inet6RouteLookup("blue",
+                                                               route_a.str());
+    TASK_UTIL_EXPECT_TRUE(rt_b != NULL);
+    int label_b = rt_b->entry.next_hops.next_hop[0].label;
+    string nh_b = rt_b->entry.next_hops.next_hop[0].address;
+    TASK_UTIL_EXPECT_NE(0xFFFFF, label_b);
+    TASK_UTIL_EXPECT_EQ("192.168.1.1", nh_b);
+    TASK_UTIL_EXPECT_EQ("blue", rt_b->entry.virtual_network);
+
+    // Verify that label and nh are the same on agents A and B.
+    TASK_UTIL_EXPECT_EQ(label_a, label_b);
+    TASK_UTIL_EXPECT_EQ(nh_a, nh_b);
+
+    // Send the same route again. AddInet6Route() will increment the label. So,
+    // check for label difference to make sure we have processed the duplicate.
+    agent_a_->AddInet6Route("blue", route_a.str(), "192.168.1.1");
+    task_util::WaitForIdle();
+    TASK_UTIL_EXPECT_TRUE(VerifyRouteUpdateLabel("blue", route_a.str(),
+                                                (label_a + 1), agent_a_.get()));
 
     // Delete route from agent A.
     agent_a_->DeleteInet6Route("blue", route_a.str());
