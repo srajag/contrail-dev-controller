@@ -126,6 +126,11 @@ int Inet6VpnPrefix::CompareTo(const Inet6VpnPrefix &other) const {
     return 0;
 }
 
+bool Inet6VpnPrefix::operator==(const Inet6VpnPrefix &rhs) const { 
+    return (rd_ == rhs.rd_ && addr_ == rhs.addr_ &&
+            prefixlen_ == rhs.prefixlen_);
+}
+
 Inet6VpnRoute::Inet6VpnRoute(const Inet6VpnPrefix &prefix) : prefix_(prefix) {
 }
 

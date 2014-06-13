@@ -59,18 +59,6 @@ DBTableBase *Inet6VpnTable::CreateTable(DB *db, const std::string &name) {
     return table;
 }
 
-static RouteDistinguisher GenerateDistinguisher(const BgpTable *src_table,
-                                                const BgpPath *src_path) {
-    RouteDistinguisher source_rd = src_path->GetAttr()->source_rd();
-    if (!source_rd.IsNull()) {
-        return source_rd;
-    }
-
-    assert(!src_path->GetPeer() || !src_path->GetPeer()->IsXmppPeer());
-    const RoutingInstance *src_instance = src_table->routing_instance();
-    return *src_instance->GetRD();
-}
-
 BgpRoute *Inet6VpnTable::RouteReplicate(BgpServer *server, BgpTable *src_table,
         BgpRoute *source_rt, const BgpPath *src_path,
         ExtCommunityPtr community) {
@@ -79,8 +67,7 @@ BgpRoute *Inet6VpnTable::RouteReplicate(BgpServer *server, BgpTable *src_table,
     Inet6Route *src_rt = dynamic_cast<Inet6Route *>(source_rt);
     assert(src_rt);
 
-    const RouteDistinguisher &rd = GenerateDistinguisher(src_table, src_path);
-
+    const RouteDistinguisher &rd = src_path->GetAttr()->source_rd();
     Inet6VpnPrefix vpn_prefix(rd, src_rt->GetPrefix().ip6_addr(),
                               src_rt->GetPrefix().prefixlen());
 

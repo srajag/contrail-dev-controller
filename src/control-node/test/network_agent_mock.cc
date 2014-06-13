@@ -265,13 +265,19 @@ pugi::xml_document *XmppDocumentMock::RouteDeleteXmlDoc(
 pugi::xml_document *XmppDocumentMock::Inet6RouteAddXmlDoc(
         const std::string &network, const std::string &prefix,
         NextHops nexthops, const vector<int> &sgids) {
-    return Inet6RouteAddDeleteXmlDoc(network, prefix, true, nexthops, sgids);
+    return Inet6RouteAddDeleteXmlDoc(network, prefix, ADD, nexthops, sgids);
+}
+
+pugi::xml_document *XmppDocumentMock::Inet6RouteChangeXmlDoc(
+        const std::string &network, const std::string &prefix,
+        NextHops nexthops, const vector<int> &sgids) {
+    return Inet6RouteAddDeleteXmlDoc(network, prefix, CHANGE, nexthops, sgids);
 }
 
 pugi::xml_document *XmppDocumentMock::Inet6RouteDeleteXmlDoc(
         const std::string &network, const std::string &prefix,
         NextHops nexthops, const vector<int> &sgids) {
-    return Inet6RouteAddDeleteXmlDoc(network, prefix, false, nexthops, sgids);
+    return Inet6RouteAddDeleteXmlDoc(network, prefix, DELETE, nexthops, sgids);
 }
 
 pugi::xml_document *XmppDocumentMock::RouteEnetAddXmlDoc(
@@ -383,7 +389,7 @@ pugi::xml_document *XmppDocumentMock::RouteAddDeleteXmlDoc(
 }
 
 pugi::xml_document *XmppDocumentMock::Inet6RouteAddDeleteXmlDoc(
-        const std::string &network, const std::string &prefix, bool add,
+        const std::string &network, const std::string &prefix, Oper oper,
         NextHops nexthops, const vector<int> &sgids) {
     xdoc_->reset();
     xml_node pubsub = PubSubHeader(kNetworkServiceJID);
@@ -415,7 +421,13 @@ pugi::xml_document *XmppDocumentMock::Inet6RouteAddDeleteXmlDoc(
         item_nexthop.af = BgpAf::IPv4;
         assert(!nexthop.address_.empty());
         item_nexthop.address = nexthop.address_;
-        item_nexthop.label = add ? (nexthop.label_ ?: label_alloc_++) : 0xFFFFF;
+        if (oper == ADD) {
+            item_nexthop.label = (nexthop.label_ ?: ++label_alloc_);
+        } else if (oper == CHANGE) {
+            item_nexthop.label = label_alloc_;
+        } else if (oper == DELETE) {
+            item_nexthop.label = 0xFFFFF;
+        }
         item_nexthop.tunnel_encapsulation_list.tunnel_encapsulation = 
             nexthop.tunnel_encapsulations_;
         if (nexthop.tunnel_encapsulations_[0] == "all_ipv6") {
@@ -435,7 +447,8 @@ pugi::xml_document *XmppDocumentMock::Inet6RouteAddDeleteXmlDoc(
     pubsub = PubSubHeader(kNetworkServiceJID);
     xml_node collection = pubsub.append_child("collection");
     collection.append_attribute("node") = network.c_str();
-    xml_node assoc = collection.append_child(add ? "associate" : "dissociate");
+    xml_node assoc = collection.append_child(
+        ((oper == ADD) || (oper == CHANGE)) ? "associate" : "dissociate");
     assoc.append_attribute("node") = header.str().c_str();
     return xdoc_.get();
 }
@@ -882,6 +895,25 @@ void NetworkAgentMock::AddInet6Route(const string &network_name,
     AgentPeer *peer = GetAgent();
     xml_document *xdoc = impl_->Inet6RouteAddXmlDoc(network_name, prefix,
                                                     nexthops, sgids);
+    peer->SendDocument(xdoc);
+}
+
+void NetworkAgentMock::ChangeInet6Route(const string &network_name,
+        const string &prefix, const string &nexthop, const string &encap,
+        const vector<int> &sgids) {
+    NextHops nexthops;
+
+    if (!nexthop.empty()) {
+        if (encap.length()) {
+            nexthops.push_back(NextHop(nexthop, 0, encap));
+        } else {
+            nexthops.push_back(NextHop(nexthop, 0));
+        }
+    }
+
+    AgentPeer *peer = GetAgent();
+    xml_document *xdoc = impl_->Inet6RouteChangeXmlDoc(network_name, prefix,
+                                                       nexthops, sgids);
     peer->SendDocument(xdoc);
 }
 

@@ -22,8 +22,8 @@ env.Append(LIBPATH = env['TOP'] + '/bgp/enet')
 env.Append(LIBPATH = env['TOP'] + '/bgp/evpn')
 env.Append(LIBPATH = env['TOP'] + '/bgp/ermvpn')
 env.Append(LIBPATH = env['TOP'] + '/bgp/test')
-env.Append(LIBPATH = env['TOP'] + '/bgp/inet6')
 env.Append(LIBPATH = env['TOP'] + '/bgp/l3vpn')
+env.Append(LIBPATH = env['TOP'] + '/bgp/inet6')
 env.Append(LIBPATH = env['TOP'] + '/bgp/inet6vpn')
 env.Append(LIBPATH = env['TOP'] + '/bgp/origin-vn')
 env.Append(LIBPATH = env['TOP'] + '/bgp/routing-instance')
@@ -72,8 +72,8 @@ env.Prepend(LIBS = [
                     'bgp_ermvpn',
                     'bgp_enet',
                     'bgp_evpn',
-                    'bgp_inet6',
                     'bgp_l3vpn',
+                    'bgp_inet6',
                     'bgp_inet6vpn',
                     'xmpp_unicast',
                     'xmpp_multicast',
@@ -97,20 +97,27 @@ if sys.platform != 'darwin':
                              '-ltask_test',
                              '-Wl,--no-whole-archive'])
 
-inet6vpn_table_test = env.UnitTest('inet6vpn_table_test',
-                                   ['inet6vpn_table_test.cc'])
-env.Alias('src/bgp/inet6vpn:inet6vpn_table_test', inet6vpn_table_test)
-env.Alias('controller/src/bgp/inet6vpn:inet6vpn_table_test',
-          inet6vpn_table_test)
-
 inet6vpn_prefix_test = env.UnitTest('inet6vpn_prefix_test',
                                     ['inet6vpn_prefix_test.cc'])
 env.Alias('src/bgp/inet6vpn:inet6vpn_prefix_test', inet6vpn_prefix_test)
 env.Alias('controller/src/bgp/inet6vpn:inet6vpn_prefix_test',
           inet6vpn_prefix_test)
 
+inet6vpn_route_test = env.UnitTest('inet6vpn_route_test',
+                                   ['inet6vpn_route_test.cc'])
+env.Alias('src/bgp/inet6vpn:inet6vpn_route_test', inet6vpn_route_test)
+env.Alias('controller/src/bgp/inet6vpn:inet6vpn_route_test',
+          inet6vpn_route_test)
+
+inet6vpn_table_test = env.UnitTest('inet6vpn_table_test',
+                                   ['inet6vpn_table_test.cc'])
+env.Alias('src/bgp/inet6vpn:inet6vpn_table_test', inet6vpn_table_test)
+env.Alias('controller/src/bgp/inet6vpn:inet6vpn_table_test',
+          inet6vpn_table_test)
+
 test_suite = [
     inet6vpn_prefix_test,
+    inet6vpn_route_test,
     inet6vpn_table_test,
 ]
 
