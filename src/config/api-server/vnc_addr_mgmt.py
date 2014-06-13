@@ -225,7 +225,6 @@ class Subnet(object):
         self._network = network
         self._exclude = exclude
         self.gw_ip = gw_ip
-        self._version = network.version 
         self._alloc_pool_list = alloc_pool_list
         self.enable_dhcp = enable_dhcp
         self.dns_nameservers = dns_nameservers 
@@ -341,7 +340,7 @@ class AddrMgmt(object):
                 subnet_dict['gw'] = ipam_subnet.get('default_gateway', None)
                 subnet_dict['allocation_pools'] = \
                     ipam_subnet.get('allocation_pools', None)
-                subnet_dict['enable_dhcp'] = ipam_subnet.get('enable_dhcp', True)
+                subnet_dict['enable_dhcp'] = ipam_subnet.get('enable_dhcp', None)
                 subnet_dict['dns_nameservers'] = ipam_subnet.get('dns_nameservers', None)
                 subnet_name = subnet_dict['ip_prefix'] + '/' + str(
                               subnet_dict['ip_prefix_len'])
@@ -366,7 +365,7 @@ class AddrMgmt(object):
 
                     gateway_ip = ipam_subnet.get('default_gateway', None)
                     allocation_pools = ipam_subnet.get('allocation_pools', None)
-                    dhcp_config = ipam_subnet.get('enable_dhcp', True)
+                    dhcp_config = ipam_subnet.get('enable_dhcp', None)
                     nameservers = ipam_subnet.get('dns_nameservers', None)
                     addr_start = ipam_subnet.get('addr_from_start', None)
                     subnet_obj = Subnet(
@@ -447,7 +446,7 @@ class AddrMgmt(object):
                     raise AddrMgmtSubnetInvalid(vn_fq_name_str, key)
 
                 req_alloc_list = req_subnet['allocation_pools'] or []
-                db_alloc_list = db_subnet['allocation_pools']  or []
+                db_alloc_list = db_subnet['allocation_pools'] 
                 if (len(req_alloc_list) != len(db_alloc_list)):
                     raise AddrMgmtSubnetInvalid(vn_fq_name_str, key)
 
@@ -651,12 +650,6 @@ class AddrMgmt(object):
         if not subnet_dicts:
             raise AddrMgmtSubnetUndefined(vn_fq_name_str)
 
-        #create ip-address-list
-        ip_addr_list = []
-        ipv4_alloc_done = False
-        ipv6_subnet_exists = False
-        ipv6_alloc_done = False
-  
         current_count = 0
         subnet_count = len(subnet_dicts)     
         for subnet_name in subnet_dicts:
@@ -694,31 +687,10 @@ class AddrMgmt(object):
                 else:
                     raise AddrMgmtSubnetExhausted(vn_fq_name, 'all')
 
-            if (ipv4_alloc_done == True) and (subnet_obj.get_version() == 4):
-                continue
-
-            if (subnet_obj.get_version() == 6):
-                ipv6_subnet_exists = True
-                if (ipv6_alloc_done == True):
-                    continue
-
-            ip_addr = subnet_obj.ip_alloc(ipaddr=asked_ip_addr)
             if ip_addr is not None or sub:
-                ip_addr_list.append(ip_addr)
-                if (subnet_obj.get_version() == 4):
-                    ipv4_alloc_done = True
-                if (subnet_obj.get_version() == 6):
-                    ipv6_alloc_done = True
-            else:
-                print 'Cannot allocate address from subnet %s' %(subnet_obj.get_name())
-              
-        # Raise exception if allocation failed
-        if (ipv4_alloc_done == False):
-            raise AddrMgmtSubnetExhausted(vn_fq_name, 'all')
-        if ((ipv6_subnet_exists == True) and (ipv6_alloc_done == False)): 
-            raise AddrMgmtSubnetExhausted(vn_fq_name, 'all')
+                return ip_addr
 
-        return ip_addr_list
+        raise AddrMgmtSubnetExhausted(vn_fq_name, 'all')
     # end ip_alloc_req
 
     def ip_alloc_notify(self, ip_addr, vn_fq_name):
@@ -744,14 +716,11 @@ class AddrMgmt(object):
                                     alloc_pool_list=subnet_dict['allocation_pools'])
                 self._subnet_objs[vn_fq_name_str][subnet_name] = subnet_obj
 
-            if isinstance(ip_addr, list):
-                for ip in ip_addr:
-                    if subnet_obj.ip_belongs(ip):
-                        subnet_obj.ip_alloc(ipaddr=ip)
-            else:
-                if subnet_obj.ip_belongs(ip):
-                    ip_addr = subnet_obj.ip_alloc(ipaddr=ip)
-                    break
+            if not subnet_obj.ip_belongs(ip_addr):
+                continue
+
+            ip_addr = subnet_obj.ip_alloc(ipaddr=ip_addr)
+            break
     # end ip_alloc_notify
 
     def ip_free_req(self, ip_addr, vn_fq_name, sub=None):
@@ -780,19 +749,11 @@ class AddrMgmt(object):
                                     dns_nameservers=subnet_dict['dns_nameservers'],
                                     alloc_pool_list=subnet_dict['allocation_pools'])
                 self._subnet_objs[vn_fq_name_str][subnet_name] = subnet_obj
- 
-            if isinstance(ip_addr, list):
-                for ip in ip_addr:
-                    if Subnet.ip_belongs_to(IPNetwork(subnet_name),
-                                            IPAddress(ip)):
-                        subnet_obj.ip_free(IPAddress(ip))
-                        ip_addr.remove(ip)
-            else:
-                if Subnet.ip_belongs_to(IPNetwork(subnet_name),
-                                        IPAddress(ip_addr)):
-                    subnet_obj.ip_free(IPAddress(ip_addr))
-                    break
 
+            if Subnet.ip_belongs_to(IPNetwork(subnet_name),
+                                    IPAddress(ip_addr)):
+                subnet_obj.ip_free(IPAddress(ip_addr))
+                break
     # end ip_free_req
 
     def ip_free_notify(self, ip_addr, vn_fq_name):
@@ -816,17 +777,10 @@ class AddrMgmt(object):
                                     alloc_pool_list=subnet_dict['allocation_pools'])
                 self._subnet_objs[vn_fq_name_str][subnet_name] = subnet_obj
 
-            if isinstance(ip_addr, list):
-                for ip in ip_addr:
-                    if Subnet.ip_belongs_to(IPNetwork(subnet_name),
-                                            IPAddress(ip_addr)):
-                        subnet_obj.ip_free(IPAddress(ip_addr))
-                        ip_addr.remove(ip)
-            else: 
-                if Subnet.ip_belongs_to(IPNetwork(subnet_name),
-                                        IPAddress(ip_addr)):
-                    subnet_obj.ip_free(IPAddress(ip_addr))
-                    break
+            if Subnet.ip_belongs_to(IPNetwork(subnet_name),
+                                    IPAddress(ip_addr)):
+                subnet_obj.ip_free(IPAddress(ip_addr))
+                break
     # end ip_free_notify
 
     # Given IP address count on given virtual network, subnet/List of subnet
