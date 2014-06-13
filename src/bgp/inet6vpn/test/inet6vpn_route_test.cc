@@ -235,7 +235,7 @@ TEST_F(Inet6VpnRouteTest, MoreSpecificTestType0Rd) {
     prefix_str = "1:1:2001:db8:85a3::/48";
     EXPECT_EQ(route1.IsMoreSpecific(prefix_str), true);
 
-    // Larger RD value
+    // Larger RD value also should not matter
     prefix_str = "65333:4294967290:2001:db8:85a3::/48";
     EXPECT_EQ(route1.IsMoreSpecific(prefix_str), true);
 
@@ -259,6 +259,7 @@ TEST_F(Inet6VpnRouteTest, MoreSpecificTestType1Rd) {
     prefix_str = "10.1.1.0:99:2001:db8:85a3::a:b:c/48";
     EXPECT_EQ(route1.IsMoreSpecific(prefix_str), true);
 
+    // Larger RD value also should not matter
     prefix_str = "10.2.2.2:99:2001:db8:85a3::a:b:c/48";
     EXPECT_EQ(route1.IsMoreSpecific(prefix_str), true);
 
