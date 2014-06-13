@@ -54,8 +54,8 @@ using std::vector;
 using boost::system::error_code;
 
 BgpXmppChannel::ErrorStats::ErrorStats()
-    : inet6_bad_xml_token_count(0), inet6_bad_prefix_count(0),
-      inet6_bad_nexthop_count(0), inet6_bad_address_family_count(0) {
+    : inet6_rx_bad_xml_token_count(0), inet6_rx_bad_prefix_count(0),
+      inet6_rx_bad_nexthop_count(0), inet6_rx_bad_afi_safi_count(0) {
 }
 
 BgpXmppChannel::Stats::Stats()
@@ -1030,7 +1030,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     item.Clear();
 
     if (!item.XmlParse(node)) {
-        incr_rx_inet6_bad_xml_token_count();
+        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_XML_TOKEN);
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Invalid message received");
         return;
@@ -1039,7 +1039,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     // NLRI ipaddress/mask
     if ((item.entry.nlri.af != BgpAf::IPv6) ||
         (item.entry.nlri.safi != BgpAf::Unicast)) {
-        incr_rx_inet6_bad_address_family();
+        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_AFI_SAFI);
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Unsupported address family");
         return;
@@ -1049,7 +1049,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     Inet6Prefix rt_prefix = Inet6Prefix::FromString(item.entry.nlri.address,
                                                     &error);
     if (error) {
-        incr_rx_inet6_bad_prefix();
+        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_PREFIX);
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
            BGP_LOG_FLAG_ALL, "Bad address string: " << item.entry.nlri.address);
         return;
@@ -1142,7 +1142,8 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
                           item.entry.next_hops.next_hop[i].af,
                           item.entry.next_hops.next_hop[i].address,
                           &nhop_address))) {
-                    incr_rx_inet6_bad_nexthop();
+                    error_stats().
+                        incr_rx_inet6_count(ErrorStats::RX_BAD_NEXTHOP);
                     BGP_LOG_PEER(Message, Peer(), SandeshLevel::SYS_WARN,
                         BGP_LOG_FLAG_ALL, BGP_PEER_DIR_IN,
                         "Error parsing nexthop address:" <<

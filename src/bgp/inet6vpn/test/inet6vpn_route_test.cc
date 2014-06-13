@@ -148,7 +148,7 @@ TEST_F(Inet6VpnRouteTest, Type1RdSamePrefix) {
     EXPECT_EQ(0, route2.CompareTo(route1));
 }
 
-TEST_F(Inet6VpnRouteTest, ToStringTest) {
+TEST_F(Inet6VpnRouteTest, ToString) {
     std::string prefix_str("10.1.1.1:4567:2001:db8:85a3::a:b:cccc/128");
     Inet6VpnPrefix prefix(Inet6VpnPrefix::FromString(prefix_str));
     Inet6VpnRoute route1(prefix);
@@ -219,7 +219,7 @@ TEST_F(Inet6VpnRouteTest, GetDBRequestKey2) {
     EXPECT_EQ(prefix, key->prefix);
 }
 
-TEST_F(Inet6VpnRouteTest, MoreSpecificTestType0Rd) {
+TEST_F(Inet6VpnRouteTest, IsMoreSpecificType0Rd) {
     std::string prefix_str = "65000:4294967290:2001:db8:85a3::d:e:a/128";
     Inet6VpnPrefix prefix(Inet6VpnPrefix::FromString(prefix_str));
     Inet6VpnRoute route1(prefix);
@@ -243,7 +243,7 @@ TEST_F(Inet6VpnRouteTest, MoreSpecificTestType0Rd) {
     EXPECT_EQ(route1.IsMoreSpecific(prefix_str), true);
 }
 
-TEST_F(Inet6VpnRouteTest, MoreSpecificTestType1Rd) {
+TEST_F(Inet6VpnRouteTest, IsMoreSpecificType1Rd) {
     std::string prefix_str = "10.1.1.1:65530:2001:db8:85a3::a:b:c/128";
     Inet6VpnPrefix prefix(Inet6VpnPrefix::FromString(prefix_str));
     Inet6VpnRoute route1(prefix);

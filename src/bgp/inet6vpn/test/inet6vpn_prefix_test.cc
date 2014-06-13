@@ -94,7 +94,7 @@ TEST_F(Inet6VpnPrefixTest, BuildPrefix) {
     */
 }
 
-TEST_F(Inet6VpnPrefixTest, MoreSpecificTest) {
+TEST_F(Inet6VpnPrefixTest, IsMoreSpecific) {
     boost::system::error_code ec;
 
     Inet6VpnPrefix phost1(Inet6VpnPrefix::FromString(
