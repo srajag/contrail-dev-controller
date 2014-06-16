@@ -792,10 +792,20 @@ targetNamespace="http://www.contrailsystems.com/2012/VNC-CONFIG/0">
      Link('virtual-machine-interface-routing-instance',
           'virtual-machine-interface', 'bgp:routing-instance', ['ref']) -->
 
+<xsd:simpleType name="IpAddressFamilyType">
+    <xsd:restriction base="xsd:string">
+        <xsd:enumeration value="v4"/>
+        <xsd:enumeration value="v6"/>
+    </xsd:restriction>
+</xsd:simpleType>
+
 <xsd:element name="instance-ip" type="ifmap:IdentityType"/>
 <xsd:element name="instance-ip-address" type="IpAddressType"/>
 <!--#IFMAP-SEMANTICS-IDL 
      Property('instance-ip-address', 'instance-ip') -->
+<xsd:element name="instance-ip-family" type="IpAddressFamilyType"/>
+<!--#IFMAP-SEMANTICS-IDL 
+     Property('instance-ip-family', 'instance-ip') -->
 
 <xsd:element name="instance-ip-virtual-network"/>
 <!--#IFMAP-SEMANTICS-IDL 
