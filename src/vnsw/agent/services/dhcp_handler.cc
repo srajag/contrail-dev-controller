@@ -254,8 +254,12 @@ bool DhcpHandler::FindLeaseData() {
         const std::vector<VnIpam> &ipam = vm_itf_->vn()->GetVnIpam();
         unsigned int i;
         for (i = 0; i < ipam.size(); ++i) {
-            if (IsIp4SubnetMember(ip, ipam[i].ip_prefix, ipam[i].plen)) {
-                uint32_t default_gw = ipam[i].default_gw.to_ulong();
+            if (!ipam[i].IsV4()) {
+                continue;
+            }
+            if (IsIp4SubnetMember(ip, ipam[i].ip_prefix.to_v4(), 
+                                  ipam[i].plen)) {
+                uint32_t default_gw = ipam[i].default_gw.to_v4().to_ulong();
                 FillDhcpInfo(ip.to_ulong(), ipam[i].plen, default_gw, default_gw);
                 return true;
             }

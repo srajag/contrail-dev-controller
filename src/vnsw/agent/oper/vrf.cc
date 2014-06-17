@@ -102,6 +102,13 @@ void VrfEntry::PostAdd() {
     rt_table_db_[type]->SetVrf(this);
     ((VrfTable *)get_table())->dbtree_[type].insert(VrfTable::VrfDbPair(name_, 
                                                         rt_table_db_[type]));
+
+    type = Agent::INET6_UNICAST;
+    rt_table_db_[type] = static_cast<AgentRouteTable *>
+        (db->CreateTable(name_ + AgentRouteTable::GetSuffix(type)));
+    rt_table_db_[type]->SetVrf(this);
+    ((VrfTable *)get_table())->dbtree_[type].insert(VrfTable::VrfDbPair(name_, 
+                                                        rt_table_db_[type]));
 }
 
 bool VrfEntry::CanDelete(DBRequest *req) {
@@ -161,6 +168,10 @@ AgentRouteTable *VrfEntry::GetLayer2RouteTable() const {
     return rt_table_db_[Agent::LAYER2];
 }
 
+AgentRouteTable *VrfEntry::GetInet6UnicastRouteTable() const {
+    return rt_table_db_[Agent::INET6_UNICAST];
+}
+
 bool VrfEntry::DBEntrySandesh(Sandesh *sresp, std::string &name) const {
     VrfListResp *resp = static_cast<VrfListResp *>(sresp);
 
@@ -170,6 +181,7 @@ bool VrfEntry::DBEntrySandesh(Sandesh *sresp, std::string &name) const {
         data.set_ucindex(vrf_id());
         data.set_mcindex(vrf_id());
         data.set_l2index(vrf_id());
+        data.set_uc6index(vrf_id());
         std::string vrf_flags;
         if (flags() & VrfData::ConfigVrf)
             vrf_flags += "Config; ";
@@ -217,6 +229,7 @@ bool VrfEntry::DeleteTimeout() {
     str << "Unicast routes: " << rt_table_db_[Agent::INET4_UNICAST]->Size();
     str << " Mutlicast routes: " << rt_table_db_[Agent::INET4_MULTICAST]->Size();
     str << " Layer2 routes: " << rt_table_db_[Agent::LAYER2]->Size();
+    str << "Unicast v6 routes: " << rt_table_db_[Agent::INET6_UNICAST]->Size();
     str << " Reference: " << GetRefCount();
     OPER_TRACE(Vrf, "VRF delete failed, " + str.str(), name_);
     assert(0);
@@ -342,6 +355,10 @@ AgentRouteTable *VrfTable::GetInet4MulticastRouteTable(const string &vrf_name) {
 
 AgentRouteTable *VrfTable::GetLayer2RouteTable(const string &vrf_name) {
     return GetRouteTable(vrf_name, Agent::LAYER2);
+}
+
+AgentRouteTable *VrfTable::GetInet6UnicastRouteTable(const string &vrf_name) {
+    return GetRouteTable(vrf_name, Agent::INET6_UNICAST);
 }
 
 AgentRouteTable *VrfTable::GetRouteTable(const string &vrf_name,

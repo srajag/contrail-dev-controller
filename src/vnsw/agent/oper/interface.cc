@@ -496,6 +496,12 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
         data.set_active("Inactive");
     }
 
+    if (ipv6_active_) {
+        data.set_ip6_active("Active");
+    } else {
+        data.set_ip6_active("Inactive");
+    }
+
     if (l2_active_) {
         data.set_l2_active("L2 Active");
     } else {
@@ -532,6 +538,7 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
         if (vintf->vm())
             data.set_vm_uuid(UuidToString(vintf->vm()->GetUuid()));
         data.set_ip_addr(vintf->ip_addr().to_string());
+        data.set_ip6_addr(vintf->ip6_addr().to_string());
         data.set_mac_addr(vintf->vm_mac());
         data.set_mdata_ip_addr(vintf->mdata_ip_addr().to_string());
         data.set_vxlan_id(vintf->vxlan_id());

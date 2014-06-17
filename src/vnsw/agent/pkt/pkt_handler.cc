@@ -426,12 +426,15 @@ bool PktHandler::IsGwPacket(const Interface *intf, uint32_t dst_ip) {
     if (vn) {
         const std::vector<VnIpam> &ipam = vn->GetVnIpam();
         for (unsigned int i = 0; i < ipam.size(); ++i) {
+            if (!ipam[i].IsV4()) {
+                continue;
+            }
             uint32_t mask = 
                 ipam[i].plen ? (0xFFFFFFFF << (32 - ipam[i].plen)) : 0;
             if ((vm_intf->ip_addr().to_ulong() & mask)
-                    != (ipam[i].ip_prefix.to_ulong() & mask))
+                    != (ipam[i].ip_prefix.to_v4().to_ulong() & mask))
                 continue;
-            return (ipam[i].default_gw.to_ulong() == dst_ip);
+            return (ipam[i].default_gw.to_v4().to_ulong() == dst_ip);
         }
     }
 

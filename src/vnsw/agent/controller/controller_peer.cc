@@ -1368,6 +1368,16 @@ bool AgentXmppChannel::ControllerSendV4UnicastRoute(AgentXmppChannel *peer,
     return (peer->SendUpdate(data_,datalen_));
 }
 
+bool AgentXmppChannel::ControllerSendV6UnicastRoute(AgentXmppChannel *peer,
+                                               AgentRoute *route,
+                                               std::string vn, 
+                                               const SecurityGroupList *sg_list,
+                                               uint32_t mpls_label,
+                                               TunnelType::TypeBmap bmap,
+                                               bool add_route) {
+    return true;
+}
+
 bool AgentXmppChannel::ControllerSendEvpnRoute(AgentXmppChannel *peer,
                                                AgentRoute *route, 
                                                std::string vn, 
@@ -1493,11 +1503,13 @@ bool AgentXmppChannel::ControllerSendRoute(AgentXmppChannel *peer,
     if (type == Agent::INET4_UNICAST) {
         ret = AgentXmppChannel::ControllerSendV4UnicastRoute(peer, route, vn,
                                           sg_list, label, bmap, add_route);
-    } 
-    if (type == Agent::LAYER2) {
+    } else if (type == Agent::LAYER2) {
         ret = AgentXmppChannel::ControllerSendEvpnRoute(peer, route, vn, 
                                          label, bmap, add_route);
-    } 
+    } else if (type == Agent::INET6_UNICAST) {
+        ret = AgentXmppChannel::ControllerSendV6UnicastRoute(peer, route, vn,
+                                          sg_list, label, bmap, add_route);
+    }
     return ret;
 }
 

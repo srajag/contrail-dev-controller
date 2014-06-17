@@ -319,7 +319,10 @@ void MulticastHandler::VisitUnresolvedVMList(const VnEntry *vn)
         if (vn->Ipv4Forwarding()) {
             for (std::vector<VnIpam>::const_iterator it = ipam.begin(); 
                  it != ipam.end(); it++) {
-                if (IsSubnetMember(vm_itf->ip_addr(), (*it).ip_prefix, 
+                if (!it->IsV4()) {
+                    continue;
+                }
+                if (IsSubnetMember(vm_itf->ip_addr(), (*it).ip_prefix.to_v4(), 
                                    (*it).plen)) {
                     this->AddVmInterfaceInSubnet(vm_itf->vrf()->GetName(),
                                   GetSubnetBroadcastAddress(vm_itf->ip_addr(),
@@ -457,7 +460,10 @@ void MulticastHandler::ModifyVmInterface(DBTablePartBase *partition,
             GetIpamMapList(vm_itf->vn()->GetUuid());
         for(std::vector<VnIpam>::const_iterator it = ipam.begin(); 
             it != ipam.end(); it++) {
-            if (IsSubnetMember(vm_itf_ip, (*it).ip_prefix, (*it).plen)) {
+            if (!it->IsV4()) {
+                continue;
+            }
+            if (IsSubnetMember(vm_itf_ip, (*it).ip_prefix.to_v4(), (*it).plen)) {
                 MCTRACE(Log, "vm interface add being issued for ", 
                         vm_itf->vrf()->GetName(),
                         vm_itf->ip_addr().to_string(), 0);

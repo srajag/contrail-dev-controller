@@ -25,9 +25,9 @@ namespace autogen {
 
 class VmInterface;
 struct VnIpam {
-    Ip4Address ip_prefix;
+    IpAddress ip_prefix;
     uint32_t   plen;
-    Ip4Address default_gw;
+    IpAddress default_gw;
     bool       installed;    // is the route to send pkts to host installed
     std::string ipam_name;
 
@@ -35,8 +35,14 @@ struct VnIpam {
            std::string &name)
         : plen(len), installed(false), ipam_name(name) {
         boost::system::error_code ec;
-        ip_prefix = Ip4Address::from_string(ip, ec);
-        default_gw = Ip4Address::from_string(gw, ec);
+        ip_prefix = IpAddress::from_string(ip, ec);
+        default_gw = IpAddress::from_string(gw, ec);
+    }
+    bool IsV4() const {
+        return ip_prefix.is_v4();
+    }
+    bool IsV6() const {
+        return ip_prefix.is_v6();
     }
     bool operator<(const VnIpam &rhs) const {
         if (ip_prefix != rhs.ip_prefix)
@@ -45,16 +51,32 @@ struct VnIpam {
         return (plen < rhs.plen);
     }
     Ip4Address GetBroadcastAddress() const {
-        Ip4Address broadcast(ip_prefix.to_ulong() | 
-                             ~(0xFFFFFFFF << (32 - plen)));
-        return broadcast;
+        if (ip_prefix.is_v4()) {
+            Ip4Address broadcast(ip_prefix.to_v4().to_ulong() | 
+                    ~(0xFFFFFFFF << (32 - plen)));
+            return broadcast;
+        } 
+        return Ip4Address(0);
     }
     Ip4Address GetSubnetAddress() const {
-        return GetIp4SubnetAddress(ip_prefix, plen);
+        if (ip_prefix.is_v4()) {
+            return GetIp4SubnetAddress(ip_prefix.to_v4(), plen);
+        }
+        return Ip4Address(0);
     }
+    Ip6Address GetV6SubnetAddress() const {
+        if (ip_prefix.is_v6()) {
+            return GetIp6SubnetAddress(ip_prefix.to_v6(), plen);
+        }
+        return Ip6Address();
+    }
+
     bool IsSubnetMember(const Ip4Address &ip) const {
-        return ((ip_prefix.to_ulong() | ~(0xFFFFFFFF << (32 - plen))) == 
-                 (ip.to_ulong() | ~(0xFFFFFFFF << (32 - plen)))); 
+        if (ip_prefix.is_v4()) {
+            return ((ip_prefix.to_v4().to_ulong() | ~(0xFFFFFFFF << (32 - plen))) == 
+                 (ip.to_ulong() | ~(0xFFFFFFFF << (32 - plen))));
+        }
+        return false;
     }
 };
 
