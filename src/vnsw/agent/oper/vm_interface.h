@@ -218,7 +218,7 @@ public:
         mirror_direction_(MIRROR_RX_TX), cfg_name_(""), fabric_port_(true),
         need_linklocal_ip_(false), do_dhcp_relay_(false), vm_name_(),
         vm_project_uuid_(nil_uuid()), vxlan_id_(0), layer2_forwarding_(true),
-        ipv4_forwarding_(true), mac_set_(false), vlan_id_(kInvalidVlanId),
+        layer3_forwarding_(true), mac_set_(false), vlan_id_(kInvalidVlanId),
         parent_(NULL), sg_list_(), floating_ip_list_(), service_vlan_list_(),
         static_route_list_(), vrf_assign_rule_list_(), vrf_assign_acl_(NULL) {
         ipv4_active_ = false;
@@ -237,7 +237,7 @@ public:
         mirror_entry_(NULL), mirror_direction_(MIRROR_RX_TX), cfg_name_(""), 
         fabric_port_(true), need_linklocal_ip_(false), do_dhcp_relay_(false), 
         vm_name_(vm_name), vm_project_uuid_(vm_project_uuid), vxlan_id_(0),
-        layer2_forwarding_(true), ipv4_forwarding_(true), mac_set_(false),
+        layer2_forwarding_(true), layer3_forwarding_(true), mac_set_(false),
         vlan_id_(vlan_id), parent_(parent), sg_list_(), floating_ip_list_(),
         service_vlan_list_(), static_route_list_(), vrf_assign_rule_list_(),
         vrf_assign_acl_(NULL) {
@@ -276,7 +276,7 @@ public:
     bool do_dhcp_relay() const { return do_dhcp_relay_; }
     int vxlan_id() const { return vxlan_id_; }
     bool layer2_forwarding() const { return layer2_forwarding_; }
-    bool ipv4_forwarding() const { return ipv4_forwarding_; }
+    bool layer3_forwarding() const { return layer3_forwarding_; }
     const std::string &vm_name() const { return vm_name_; }
     const boost::uuids::uuid &vm_project_uuid() const { return vm_project_uuid_; }
     const std::string &cfg_name() const { return cfg_name_; }
@@ -475,7 +475,7 @@ private:
     boost::uuids::uuid vm_project_uuid_;
     int vxlan_id_;
     bool layer2_forwarding_;
-    bool ipv4_forwarding_;
+    bool layer3_forwarding_;
     bool mac_set_;
     // VLAN Tag and the parent interface when VLAN is enabled
     uint16_t vlan_id_;
@@ -595,7 +595,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         VmInterfaceData(CONFIG), addr_(0), ip6_addr_(), vm_mac_(""), 
         cfg_name_(""), vm_uuid_(), vm_name_(), vn_uuid_(), vrf_name_(""), 
         fabric_port_(true), need_linklocal_ip_(false), layer2_forwarding_(true),
-        ipv4_forwarding_(true), mirror_enable_(false), analyzer_name_(""),
+        layer3_forwarding_(true), mirror_enable_(false), analyzer_name_(""),
         mirror_direction_(Interface::UNKNOWN), sg_list_(), 
         floating_ip_list_(), service_vlan_list_(), static_route_list_() {
     }
@@ -605,7 +605,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         VmInterfaceData(CONFIG), addr_(addr), ip6_addr_(), vm_mac_(mac), 
         cfg_name_(""), vm_uuid_(), vm_name_(vm_name), vn_uuid_(), vrf_name_(""),
         fabric_port_(true), need_linklocal_ip_(false), 
-        layer2_forwarding_(true), ipv4_forwarding_(true), 
+        layer2_forwarding_(true), layer3_forwarding_(true), 
         mirror_enable_(false), analyzer_name_(""),
         mirror_direction_(Interface::UNKNOWN), sg_list_(),
         floating_ip_list_(), service_vlan_list_(), static_route_list_() {
@@ -627,7 +627,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     // Does the port need link-local IP to be allocated
     bool need_linklocal_ip_;
     bool layer2_forwarding_;
-    bool ipv4_forwarding_;
+    bool layer3_forwarding_;
     bool mirror_enable_;
     bool admin_state_;
     std::string analyzer_name_;

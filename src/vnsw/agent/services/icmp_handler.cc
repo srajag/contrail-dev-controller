@@ -25,7 +25,7 @@ bool IcmpHandler::Run() {
         return true;
     }
     VmInterface *vm_itf = static_cast<VmInterface *>(itf);
-    if (!vm_itf->ipv4_forwarding()) { 
+    if (!vm_itf->layer3_forwarding()) { 
         return true;
     } 
     switch (icmp_->type) {

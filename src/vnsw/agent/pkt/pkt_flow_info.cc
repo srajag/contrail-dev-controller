@@ -874,7 +874,7 @@ bool PktFlowInfo::Process(const PktInfo *pkt, PktControlInfo *in,
     if (in->intf_->type() == Interface::VM_INTERFACE) {
         const VmInterface *vm_intf = 
             static_cast<const VmInterface *>(in->intf_);
-        if (!vm_intf->ipv4_forwarding()) {
+        if (!vm_intf->layer3_forwarding()) {
             LogError(pkt, "ipv4 service not enabled for ifindex");
             return false;
         }

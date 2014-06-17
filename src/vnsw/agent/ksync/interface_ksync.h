@@ -82,7 +82,7 @@ private:
     size_t os_index_;
     int network_id_;
     InetInterface::SubType sub_type_;
-    bool ipv4_forwarding_;
+    bool layer3_forwarding_;
     bool layer2_forwarding_;
     uint16_t vlan_id_;
     KSyncEntryPtr parent_;

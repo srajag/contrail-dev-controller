@@ -727,25 +727,25 @@ bool VmInterface::CopyConfig(VmInterfaceConfigData *data, bool *sg_changed) {
     }
 
     val = vn ? vn_->Ipv4Forwarding() : false;
-    if (ipv4_forwarding_ != val) {
-        ipv4_forwarding_ = val;
+    if (layer3_forwarding_ != val) {
+        layer3_forwarding_ = val;
         ret = true;
     }
 
-    val = ipv4_forwarding_ ? data->need_linklocal_ip_ : false;
+    val = layer3_forwarding_ ? data->need_linklocal_ip_ : false;
     if (need_linklocal_ip_ != val) {
         need_linklocal_ip_ = val;
         ret = true;
     }
 
     // CopyIpAddress uses fabric_port_. So, set it before CopyIpAddresss
-    val = ipv4_forwarding_ ? data->fabric_port_ : false;
+    val = layer3_forwarding_ ? data->fabric_port_ : false;
     if (fabric_port_ != val) {
         fabric_port_ = val;
         ret = true;
     }
 
-    Ip4Address ipaddr = ipv4_forwarding_ ? data->addr_ : Ip4Address(0);
+    Ip4Address ipaddr = layer3_forwarding_ ? data->addr_ : Ip4Address(0);
     if (CopyIpAddress(ipaddr)) {
         ret = true;
     }
@@ -895,14 +895,14 @@ void VmInterface::ApplyConfig(bool old_ipv4_active, bool old_l2_active, bool old
 
     //Irrespective of interface state, if ipv4 forwarding mode is enabled
     //enable L3 services on this interface
-    if (ipv4_forwarding_) {
+    if (layer3_forwarding_) {
         UpdateL3Services(true);
     } else {
         UpdateL3Services(false);
     }
 
     // Add/Del/Update L3 
-    if ((ipv4_active_ || ipv6_active_) && ipv4_forwarding_) {
+    if ((ipv4_active_ || ipv6_active_) && layer3_forwarding_) {
         UpdateL3(old_ipv4_active, old_vrf, old_addr, old_vxlan_id, force_update,
                  policy_change, old_ipv6_active, old_v6_addr);
     } else if ((old_ipv4_active || old_ipv6_active)) {
@@ -975,7 +975,7 @@ bool VmInterface::ResyncIpAddress(const VmInterfaceIpAddressData *data) {
             ret = true;
     }
 
-    if (!ipv4_forwarding_) {
+    if (!layer3_forwarding_) {
         return ret;
     }
 
@@ -1068,7 +1068,7 @@ bool VmInterface::IsActive() {
 }
 
 bool VmInterface::IsIpv4Active() {
-    if (!ipv4_forwarding() || (ip_addr_.to_ulong() == 0)) {
+    if (!layer3_forwarding() || (ip_addr_.to_ulong() == 0)) {
         return false;
     }
 
@@ -1079,7 +1079,7 @@ bool VmInterface::IsIpv4Active() {
 }
 
 bool VmInterface::IsIpv6Active() {
-    if (!ipv4_forwarding() || (ip6_addr_.is_unspecified())) {
+    if (!layer3_forwarding() || (ip6_addr_.is_unspecified())) {
         return false;
     }
 
@@ -1394,8 +1394,7 @@ void VmInterface::DeleteIpv6InterfaceRoute(VrfEntry *old_vrf,
     if ((old_vrf == NULL) || (old_addr.is_unspecified()))
         return;
 
-    Agent *agent = static_cast<InterfaceTable *>(get_table())->agent();
-    Inet6UnicastAgentRouteTable::Delete(agent->local_vm_peer(), old_vrf->GetName(),
+    Inet6UnicastAgentRouteTable::Delete(peer_.get(), old_vrf->GetName(),
                                         old_addr, 128);
 }
 

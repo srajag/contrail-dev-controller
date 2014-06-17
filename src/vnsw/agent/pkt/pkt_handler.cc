@@ -116,7 +116,7 @@ void PktHandler::HandleRcvPkt(uint8_t *ptr, std::size_t len) {
 
     if (intf->type() == Interface::VM_INTERFACE) {
         VmInterface *vm_itf = static_cast<VmInterface *>(intf);
-        if (!vm_itf->ipv4_forwarding()) {
+        if (!vm_itf->layer3_forwarding()) {
             PKT_TRACE(Err, "ipv4 not enabled for interface index <" <<
                       pkt_info->GetAgentHdr().ifindex << ">");
             agent_->stats()->incr_pkt_dropped();

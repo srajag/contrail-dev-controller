@@ -52,7 +52,7 @@ bool DhcpHandler::HandleVmRequest() {
         return true;
     }
     vm_itf_ = static_cast<VmInterface *>(itf);
-    if (!vm_itf_->ipv4_forwarding()) {
+    if (!vm_itf_->layer3_forwarding()) {
         DHCP_TRACE(Error, "DHCP request on VM port with disabled ipv4 service: "
                    << GetInterfaceIndex());
         return true;
