@@ -2831,14 +2831,29 @@ class DBInterface(object):
         # create the object
         port_id = self._virtual_machine_interface_create(port_obj)
 
+        # determine creation of v4 and v6 ip object 
+        ip_obj_v4_create = False
+        ip_obj_v6_create = False
+        ipam_refs = net_obj.get_network_ipam_refs()
+        for ipam_ref in ipam_refs:
+            subnet_vncs = ipam_ref['attr'].get_ipam_subnets()
+            for subnet_vnc in subnet_vncs:
+                cidr = '%s/%s' %(subnet_vnc.subnet.get_ip_prefix(),
+                                 subnet_vnc.subnet.get_ip_prefix_len())
+                if (IPNetwork(cidr).version == 4): 
+                    ip_obj_v4_create = True
+                if (IPNetwork(cidr).version == 6):
+                    ip_obj_v6_create = True 
+        
         # initialize ip object
         if net_obj.get_network_ipam_refs():
-            def _create_instance_ip(port_obj, ip_addr=None):
+            def _create_instance_ip(port_obj, ip_addr=None, ip_family="v4"):
                 ip_name = str(uuid.uuid4())
                 ip_obj = InstanceIp(name=ip_name)
                 ip_obj.uuid = ip_name
                 ip_obj.set_virtual_machine_interface(port_obj)
                 ip_obj.set_virtual_network(net_obj)
+                ip_obj.set_instance_ip_family(ip_family)
                 if ip_addr:
                     ip_obj.set_instance_ip_address(ip_addr)
 
@@ -2851,7 +2866,10 @@ class DBInterface(object):
                     for req_ip in req_ip_addrs:
                         created_iip_ids.append(_create_instance_ip(port_obj, req_ip))
                 else:
-                    _create_instance_ip(port_obj)
+                    if (ip_obj_v4_create is True): 
+                        created_iip_ids.append(_create_instance_ip(port_obj, ip_family="v4"))
+                    if (ip_obj_v6_create is True): 
+                        created_iip_ids.append(_create_instance_ip(port_obj, ip_family="v6")) 
             except Exception as e:
                 # ResourceExhaustionError, resources are not available
                 for iip_id in created_iip_ids:
