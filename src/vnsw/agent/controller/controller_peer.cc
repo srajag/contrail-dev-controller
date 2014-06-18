@@ -384,9 +384,9 @@ void AgentXmppChannel::ReceiveV6Update(XmlPugi *pugi) {
                                 "Error parsing v6 prefix for delete");
                         return;
                     }
+
                     rt_table->DeleteReq(bgp_peer_id(), vrf_name,
-                                        prefix_addr, prefix_len,
-                                        new ControllerVmRoute(bgp_peer_id()));
+                                        prefix_addr, prefix_len);
                 }
             }
             return;
