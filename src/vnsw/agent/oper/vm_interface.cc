@@ -271,7 +271,12 @@ static void ReadInstanceIp(VmInterfaceConfigData *data, IFMapNode *node) {
     boost::system::error_code err;
     LOG(DEBUG, "InstanceIp config for " << data->cfg_name_ << " "
         << ip->address());
-    data->addr_ = Ip4Address::from_string(ip->address(), err);
+    IpAddress addr = IpAddress::from_string(ip->address(), err);
+    if (addr.is_v4()) {
+        data->addr_ = addr.to_v4();
+    } else if (addr.is_v6()) {
+        data->ip6_addr_ = addr.to_v6();
+    }
 }
 
 
