@@ -61,7 +61,7 @@ bool DnsHandler::HandleRequest() {
     }
 
     const VmInterface *vmitf = static_cast<const VmInterface *>(itf);
-    if (!vmitf->ipv4_forwarding()) {
+    if (!vmitf->layer3_forwarding()) {
         DNS_BIND_TRACE(DnsBindError, "DNS request on VM port with disabled" 
                        "ipv4 service: " << itf);
         dns_proto->IncrStatsDrop();

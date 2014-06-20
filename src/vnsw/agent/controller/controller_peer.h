@@ -34,6 +34,7 @@ public:
     virtual void ReceiveUpdate(const XmppStanza::XmppMessage *msg);
     virtual void ReceiveEvpnUpdate(XmlPugi *pugi);
     virtual void ReceiveMulticastUpdate(XmlPugi *pugi);
+    virtual void ReceiveV6Update(XmlPugi *pugi);
     XmppChannel *GetXmppChannel() { return channel_; }
 
     //Helper to identify if specified peer has active BGP peer attached
@@ -65,6 +66,13 @@ public:
     static bool ControllerSendMcastRoute(AgentXmppChannel *peer,
                                          AgentRoute *route, bool add_route);
     static bool ControllerSendV4UnicastRoute(AgentXmppChannel *peer,
+                                             AgentRoute *route, 
+                                             std::string vn,
+                                             const SecurityGroupList *sg_list,
+                                             uint32_t mpls_label,
+                                             uint32_t tunnel_bmap,
+                                             bool add_route);
+    static bool ControllerSendV6UnicastRoute(AgentXmppChannel *peer,
                                              AgentRoute *route, 
                                              std::string vn,
                                              const SecurityGroupList *sg_list,
@@ -112,10 +120,14 @@ private:
                   autogen::EnetItemType *item);
     void AddRoute(std::string vrf_name, Ip4Address ip, uint32_t plen, 
                   autogen::ItemType *item);
+    void AddInet6Route(std::string vrf_name, Ip6Address ip, uint32_t plen, 
+                       autogen::ItemType *item);
     void AddRemoteEvpnRoute(std::string vrf_name, struct ether_addr &mac, 
                         autogen::EnetItemType *item);
     void AddRemoteRoute(std::string vrf_name, Ip4Address ip, uint32_t plen, 
                         autogen::ItemType *item);
+    void AddRemoteInet6Route(std::string vrf_name, Ip6Address ip,
+                             uint32_t plen, autogen::ItemType *item);
     void AddEcmpRoute(std::string vrf_name, Ip4Address ip, uint32_t plen, 
                       autogen::ItemType *item);
     XmppChannel *channel_;

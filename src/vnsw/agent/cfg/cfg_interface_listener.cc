@@ -37,11 +37,18 @@ void InterfaceCfgClient::Notify(DBTablePartBase *partition, DBEntryBase *e) {
             port = agent->params()->vmware_physical_port();
         }
 
+        Ip6Address ip6;
+        if (entry->ip6_addr().is_v6()) {
+            ip6 = entry->ip6_addr().to_v6();
+        }
+        Ip4Address ip4(0);
+        if (entry->ip_addr().is_v4()) {
+            ip4 = entry->ip_addr().to_v4();
+        }
         VmInterface::Add(agent->GetInterfaceTable(),
                          entry->GetUuid(), entry->GetIfname(),
-                         entry->ip_addr().to_v4(), entry->GetMacAddr(),
-                         entry->vm_name(), entry->vm_project_uuid(),
-                         vlan_id, port);
+                         ip4, entry->GetMacAddr(), entry->vm_name(), 
+                         entry->vm_project_uuid(), vlan_id, port, ip6);
         IFMapNode *node = UuidToIFNode(entry->GetUuid());
         if (node != NULL) {
             DBRequest req;

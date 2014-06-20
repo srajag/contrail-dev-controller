@@ -93,6 +93,7 @@ public:
     AgentRouteTable *GetInet4UnicastRouteTable() const;
     AgentRouteTable *GetInet4MulticastRouteTable() const;
     AgentRouteTable *GetLayer2RouteTable() const;
+    AgentRouteTable *GetInet6UnicastRouteTable() const;
     AgentRouteTable *GetRouteTable(uint8_t table_type) const;
 private:
     friend class VrfTable;
@@ -158,6 +159,7 @@ public:
     AgentRouteTable *GetInet4MulticastRouteTable(const std::string &vrf_name);
     AgentRouteTable *GetLayer2RouteTable(const std::string &vrf_name);
     AgentRouteTable *GetRouteTable(const string &vrf_name, uint8_t table_type);
+    AgentRouteTable *GetInet6UnicastRouteTable(const std::string &vrf_name);
     bool IsStaticVrf(const std::string &vrf_name) const {
         if (static_vrf_set_.find(vrf_name) != static_vrf_set_.end()) {
             return true;

@@ -131,6 +131,7 @@ public:
         INET4_UNICAST = 0,
         INET4_MULTICAST,
         LAYER2,
+        INET6_UNICAST,
         ROUTE_TABLE_MAX
     };
 

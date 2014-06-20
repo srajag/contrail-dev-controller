@@ -680,36 +680,62 @@ void VnTable::DelIPAMRoutes(VnEntry *vn, VnIpam &ipam) {
 // Add receive route for default gw
 void VnTable::AddHostRouteForGw(VnEntry *vn, const VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
-    static_cast<Inet4UnicastAgentRouteTable *>(vrf->
-        GetInet4UnicastRouteTable())->AddHostRoute(vrf->GetName(),
-                                                   ipam.default_gw, 32,
-                                                   vn->GetName());
+    if (ipam.IsV4()) {
+        static_cast<Inet4UnicastAgentRouteTable *>(vrf->
+            GetInet4UnicastRouteTable())->AddHostRoute(vrf->GetName(),
+                ipam.default_gw.to_v4(), 32, vn->GetName());
+    } else if (ipam.IsV6()) {
+        static_cast<Inet6UnicastAgentRouteTable *>(vrf->
+            GetInet6UnicastRouteTable())->AddHostRoute(vrf->GetName(),
+                ipam.default_gw.to_v6(), 128, vn->GetName());
+    }
 }
 
 // Del receive route for default gw
 void VnTable::DelHostRouteForGw(VnEntry *vn, const VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
-    static_cast<Inet4UnicastAgentRouteTable *>
-        (vrf->GetInet4UnicastRouteTable())->DeleteReq
-        (Agent::GetInstance()->local_peer(), vrf->GetName(),
-         ipam.default_gw, 32, NULL);
+    if (ipam.IsV4()) {
+        static_cast<Inet4UnicastAgentRouteTable *>
+            (vrf->GetInet4UnicastRouteTable())->DeleteReq
+            (Agent::GetInstance()->local_peer(), vrf->GetName(),
+             ipam.default_gw.to_v4(), 32, NULL);
+    } else if (ipam.IsV6()) {
+        static_cast<Inet6UnicastAgentRouteTable *>
+            (vrf->GetInet6UnicastRouteTable())->DeleteReq
+            (Agent::GetInstance()->local_peer(), vrf->GetName(),
+             ipam.default_gw.to_v6(), 128);
+    }
 }
 
 void VnTable::AddSubnetRoute(VnEntry *vn, VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
-    static_cast<Inet4UnicastAgentRouteTable *>(vrf->
-        GetInet4UnicastRouteTable())->AddDropRoute
-        (vrf->GetName(), ipam.GetSubnetAddress(), ipam.plen, vn->GetName(),
-         true);
+    if (ipam.IsV4()) {
+        static_cast<Inet4UnicastAgentRouteTable *>(vrf->
+            GetInet4UnicastRouteTable())->AddDropRoute
+            (vrf->GetName(), ipam.GetSubnetAddress(), ipam.plen, vn->GetName(),
+             true);
+    } else if (ipam.IsV6()) {
+        static_cast<Inet6UnicastAgentRouteTable *>(vrf->
+            GetInet6UnicastRouteTable())->AddDropRoute
+            (vrf->GetName(), ipam.GetV6SubnetAddress(), ipam.plen, 
+             vn->GetName(), true);
+    }
 }
 
 // Del receive route for default gw
 void VnTable::DelSubnetRoute(VnEntry *vn, VnIpam &ipam) {
     VrfEntry *vrf = vn->GetVrf();
-    static_cast<Inet4UnicastAgentRouteTable *>(vrf->
-        GetInet4UnicastRouteTable())->DeleteReq
-        (Agent::GetInstance()->local_peer(), vrf->GetName(),
-         ipam.GetSubnetAddress(), ipam.plen, NULL);
+    if (ipam.IsV4()) {
+        static_cast<Inet4UnicastAgentRouteTable *>(vrf->
+            GetInet4UnicastRouteTable())->DeleteReq
+            (Agent::GetInstance()->local_peer(), vrf->GetName(),
+             ipam.GetSubnetAddress(), ipam.plen, NULL);
+    } else if (ipam.IsV6()) {
+        static_cast<Inet6UnicastAgentRouteTable *>(vrf->
+            GetInet6UnicastRouteTable())->DeleteReq
+            (Agent::GetInstance()->local_peer(), vrf->GetName(),
+             ipam.GetV6SubnetAddress(), ipam.plen);
+    }
 }
 
 bool VnEntry::DBEntrySandesh(Sandesh *sresp, std::string &name)  const {

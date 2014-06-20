@@ -54,6 +54,15 @@ RouteKSyncEntry::RouteKSyncEntry(RouteKSyncObject* obj, const AgentRoute *rt) :
           rt_type_ = RT_UCAST;
           break;
     }
+    case Agent::INET6_UNICAST: {
+          const Inet6UnicastRouteEntry *uc_rt = 
+              static_cast<const Inet6UnicastRouteEntry *>(rt);
+          addr_ = uc_rt->addr();
+          src_addr_ = Ip6Address();
+          prefix_len_ = uc_rt->plen();
+          rt_type_ = RT_UCAST;
+          break;
+    }
     case Agent::INET4_MULTICAST: {
           const Inet4MulticastRouteEntry *mc_rt = 
               static_cast<const Inet4MulticastRouteEntry *>(rt);
@@ -244,14 +253,23 @@ int RouteKSyncEntry::Encode(sandesh_op::type op, uint8_t replace_plen,
     int encode_len, error;
     NHKSyncEntry *nexthop = nh();
 
+    if (addr_.is_v6()) {
+        return 0;
+    }
     encoder.set_h_op(op);
     encoder.set_rtr_rid(0);
     encoder.set_rtr_rt_type(rt_type_);
     encoder.set_rtr_vrf_id(vrf_id_);
     encoder.set_rtr_family(AF_INET);
     if (rt_type_ != RT_LAYER2) {
-        encoder.set_rtr_prefix(addr_.to_v4().to_ulong());
-        encoder.set_rtr_src(src_addr_.to_v4().to_ulong());
+        if (addr_.is_v4()) {
+            encoder.set_rtr_prefix(addr_.to_v4().to_ulong());
+            encoder.set_rtr_src(src_addr_.to_v4().to_ulong());
+        } else if (addr_.is_v6()) {
+            //TODO:
+            encoder.set_rtr_prefix(0);
+            encoder.set_rtr_src(0);
+        }
         encoder.set_rtr_prefix_len(prefix_len_);
     } else {
         encoder.set_rtr_family(AF_BRIDGE);
@@ -529,6 +547,14 @@ void VrfKSyncObject::VrfNotify(DBTablePartBase *partition, DBEntryBase *e) {
         // Register route-table with KSync
         RouteKSyncObject *ksync = new RouteKSyncObject(ksync_, rt_table);
         AddToVrfMap(vrf->vrf_id(), ksync, RT_UCAST);
+
+        // Get Inet6 Route table and register with KSync
+        rt_table = static_cast<AgentRouteTable *>(vrf->
+                          GetInet6UnicastRouteTable());
+
+        // Register route-table with KSync
+        ksync = new RouteKSyncObject(ksync_, rt_table);
+        //AddToVrfMap(vrf->vrf_id(), ksync, RT_UCAST);
 
         rt_table = static_cast<AgentRouteTable *>(vrf->
                           GetLayer2RouteTable());

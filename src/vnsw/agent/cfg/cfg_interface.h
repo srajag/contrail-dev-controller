@@ -26,14 +26,16 @@ struct CfgIntData : public DBRequestData {
     virtual ~CfgIntData() {};
     void Init(const boost::uuids::uuid &vm_id, const boost::uuids::uuid &vn_id,
               const boost::uuids::uuid &vm_project_id,
-              const std::string &tname, const IpAddress &ip,
-              const std::string &mac, const std::string &vm_name,
-              uint16_t vlan_id, const int32_t version);
+              const std::string &tname, const IpAddress &ip, 
+              const IpAddress &ip6, const std::string &mac, 
+              const std::string &vm_name, uint16_t vlan_id, 
+              const int32_t version);
     boost::uuids::uuid vm_id_;
     boost::uuids::uuid vn_id_;
     boost::uuids::uuid vm_project_id_;
     std::string tap_name_;
     IpAddress ip_addr_;
+    IpAddress ip6_addr_;
     std::string mac_addr_;
     std::string vm_name_;
     uint16_t vlan_id_;
@@ -55,6 +57,7 @@ public:
     const boost::uuids::uuid &vm_project_uuid() const { return vm_project_id_; }
     const std::string &GetIfname() const {return tap_name_;};
     const IpAddress &ip_addr() const {return ip_addr_;};
+    const IpAddress &ip6_addr() const {return ip6_addr_;};
     const std::string &GetMacAddr() const {return mac_addr_;};
     const std::string &vm_name() const {return vm_name_;};
     uint16_t vlan_id() const {return vlan_id_;};
@@ -69,6 +72,7 @@ private:
     boost::uuids::uuid vm_project_id_;
     std::string tap_name_;
     IpAddress ip_addr_;
+    IpAddress ip6_addr_;
     std::string mac_addr_;
     std::string vm_name_;
     uint16_t vlan_id_;
