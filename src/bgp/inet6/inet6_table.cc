@@ -122,23 +122,12 @@ BgpRoute *Inet6Table::RouteReplicate(BgpServer *server, BgpTable *src_table,
 bool Inet6Table::Export(RibOut *ribout, Route *route, const RibPeerSet &peerset,
         UpdateInfoSList &uinfo_slist) {
     BgpRoute *bgp_route = static_cast<BgpRoute *> (route);
-
     UpdateInfo *uinfo = GetUpdateInfo(ribout, bgp_route, peerset);
-    if (!uinfo)
+    if (!uinfo) {
         return false;
-
-    // Strip BGP extended communities out by default.
-    if (ribout->ExportPolicy().encoding == RibExportPolicy::BGP) {
-        if (uinfo->roattr.attr()->ext_community() != NULL) {
-            BgpAttrDB *attr_db = routing_instance()->server()->attr_db();
-            BgpAttrPtr new_attr =
-                attr_db->ReplaceExtCommunityAndLocate(
-                    uinfo->roattr.attr(), NULL);
-            uinfo->roattr.set_attr(new_attr);
-        }
     }
+    assert(ribout->ExportPolicy().encoding == RibExportPolicy::XMPP);
     uinfo_slist->push_front(*uinfo);
-
     return true;
 }
 

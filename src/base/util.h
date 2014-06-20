@@ -314,6 +314,32 @@ inline const std::string integerToString<>(const uint8_t &num) {
     return ss.str();
 }
 
+// Writes a number into a string as hex
+template <typename NumberType>
+static inline const std::string integerToHexString(const NumberType &num) {
+    std::stringstream ss;
+    ss << std::hex << num;
+    return ss.str();
+}
+
+// signed int8 must be handled specially because std::stringstream sees
+// int8_t as a text type instead of an integer type
+template <>
+inline const std::string integerToHexString<>(const int8_t &num) {
+    std::stringstream ss;
+    ss << std::hex << (int16_t)num;
+    return ss.str();
+}
+
+// unsigned int8 must be handled specially because std::stringstream sees
+// u_int8_t as a text type instead of an integer type
+template <>
+inline const std::string integerToHexString<>(const uint8_t &num) {
+    std::stringstream ss;
+    ss << std::hex << (uint16_t)num;
+    return ss.str();
+}
+
 // Converts string into a number
 template <typename NumberType>
 inline bool stringToInteger(const std::string& str, NumberType &num) {

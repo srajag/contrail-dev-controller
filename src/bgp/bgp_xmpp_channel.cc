@@ -58,6 +58,38 @@ BgpXmppChannel::ErrorStats::ErrorStats()
       inet6_rx_bad_nexthop_count(0), inet6_rx_bad_afi_safi_count(0) {
 }
 
+void BgpXmppChannel::ErrorStats::incr_inet6_rx_bad_xml_token_count() {
+    inet6_rx_bad_xml_token_count++;
+}
+
+void BgpXmppChannel::ErrorStats::incr_inet6_rx_bad_prefix_count() {
+    inet6_rx_bad_prefix_count++;
+}
+
+void BgpXmppChannel::ErrorStats::incr_inet6_rx_bad_nexthop_count() {
+    inet6_rx_bad_nexthop_count++;
+}
+
+void BgpXmppChannel::ErrorStats::incr_inet6_rx_bad_afi_safi_count() {
+    inet6_rx_bad_afi_safi_count++;
+}
+
+int BgpXmppChannel::ErrorStats::get_inet6_rx_bad_xml_token_count() const {
+    return inet6_rx_bad_xml_token_count;
+}
+
+int BgpXmppChannel::ErrorStats::get_inet6_rx_bad_prefix_count() const {
+    return inet6_rx_bad_prefix_count;
+}
+
+int BgpXmppChannel::ErrorStats::get_inet6_rx_bad_nexthop_count() const {
+    return inet6_rx_bad_nexthop_count;
+}
+
+int BgpXmppChannel::ErrorStats::get_inet6_rx_bad_afi_safi_count() const {
+    return inet6_rx_bad_afi_safi_count;
+}
+
 BgpXmppChannel::Stats::Stats()
     : rt_updates(0), reach(0), unreach(0) {
 }
@@ -237,6 +269,18 @@ public:
             stats.blocked_duration_usecs =
                 socket_stats.write_blocked_duration_usecs;
         }
+    }
+
+    virtual void GetRxErrorStats(RxErrorStats &stats) const {
+        BgpXmppChannel::ErrorStats &err_stats = peer_->error_stats();
+        stats.inet6_bad_xml_token_count =
+            err_stats.get_inet6_rx_bad_xml_token_count();
+        stats.inet6_bad_prefix_count =
+            err_stats.get_inet6_rx_bad_prefix_count();
+        stats.inet6_bad_nexthop_count =
+            err_stats.get_inet6_rx_bad_nexthop_count();
+        stats.inet6_bad_afi_safi_count =
+            err_stats.get_inet6_rx_bad_afi_safi_count();
     }
 
     virtual void UpdateTxUnreachRoute(uint32_t count) {
@@ -1030,7 +1074,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     item.Clear();
 
     if (!item.XmlParse(node)) {
-        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_XML_TOKEN);
+        error_stats().incr_inet6_rx_bad_xml_token_count();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Invalid message received");
         return;
@@ -1039,7 +1083,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     // NLRI ipaddress/mask
     if ((item.entry.nlri.af != BgpAf::IPv6) ||
         (item.entry.nlri.safi != BgpAf::Unicast)) {
-        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_AFI_SAFI);
+        error_stats().incr_inet6_rx_bad_afi_safi_count();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
                               BGP_LOG_FLAG_ALL, "Unsupported address family");
         return;
@@ -1049,7 +1093,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
     Inet6Prefix rt_prefix = Inet6Prefix::FromString(item.entry.nlri.address,
                                                     &error);
     if (error) {
-        error_stats().incr_rx_inet6_count(ErrorStats::RX_BAD_PREFIX);
+        error_stats().incr_inet6_rx_bad_prefix_count();
         BGP_LOG_PEER_INSTANCE(Peer(), vrf_name, SandeshLevel::SYS_WARN,
            BGP_LOG_FLAG_ALL, "Bad address string: " << item.entry.nlri.address);
         return;
@@ -1142,8 +1186,7 @@ void BgpXmppChannel::ProcessInet6Item(string vrf_name,
                           item.entry.next_hops.next_hop[i].af,
                           item.entry.next_hops.next_hop[i].address,
                           &nhop_address))) {
-                    error_stats().
-                        incr_rx_inet6_count(ErrorStats::RX_BAD_NEXTHOP);
+                    error_stats().incr_inet6_rx_bad_nexthop_count();
                     BGP_LOG_PEER(Message, Peer(), SandeshLevel::SYS_WARN,
                         BGP_LOG_FLAG_ALL, BGP_PEER_DIR_IN,
                         "Error parsing nexthop address:" <<

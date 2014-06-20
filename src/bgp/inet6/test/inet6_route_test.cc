@@ -68,6 +68,27 @@ TEST_F(Inet6RouteTest, GetDBRequestKey) {
     EXPECT_EQ(prefix, key->prefix);
 }
 
+TEST_F(Inet6RouteTest, CompareTo) {
+    std::string prefix_str = "2001:db8:85a3::d:e:a/128";
+    Inet6Prefix prefix(Inet6Prefix::FromString(prefix_str));
+
+    // Prefixlen 64
+    std::string prefix_str1 = "2001:db8:85a3::d:e:a/64";
+    Inet6Prefix prefix1(Inet6Prefix::FromString(prefix_str1));
+    // prefix.CompareTo(prefix1) should return 1
+    EXPECT_LT(0, prefix.CompareTo(prefix1));
+    // prefix1.CompareTo(prefix) should return -1
+    EXPECT_GT(0, prefix1.CompareTo(prefix));
+
+    // Last byte of address is 0xb
+    std::string prefix_str2 = "2001:db8:85a3::d:e:b/128";
+    Inet6Prefix prefix2(Inet6Prefix::FromString(prefix_str2));
+    // prefix.CompareTo(prefix2) should return -1
+    EXPECT_GT(0, prefix.CompareTo(prefix2));
+    // prefix2.CompareTo(prefix) should return 1
+    EXPECT_LT(0, prefix2.CompareTo(prefix));
+}
+
 int main(int argc, char **argv) {
     bgp_log_test::init();
     ::testing::InitGoogleTest(&argc, argv);

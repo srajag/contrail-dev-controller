@@ -44,53 +44,23 @@ public:
         int reach;
         int unreach;
     };
+
     struct ErrorStats {
-        enum ErrorType {
-            RX_BAD_XML_TOKEN,
-            RX_BAD_PREFIX,
-            RX_BAD_NEXTHOP,
-            RX_BAD_AFI_SAFI,
-        };
         ErrorStats();
-        int get_rx_inet6_count(ErrorType error_type) {
-            switch (error_type) {
-            case RX_BAD_XML_TOKEN:
-                return inet6_rx_bad_xml_token_count;
-            case RX_BAD_PREFIX:
-                return inet6_rx_bad_prefix_count;
-            case RX_BAD_NEXTHOP:
-                return inet6_rx_bad_nexthop_count;
-            case RX_BAD_AFI_SAFI:
-                return inet6_rx_bad_afi_safi_count;
-            default:
-                return 0;
-            }
-        }
-        void incr_rx_inet6_count(ErrorType error_type) {
-            switch (error_type) {
-            case RX_BAD_XML_TOKEN:
-                inet6_rx_bad_xml_token_count++;
-                break;
-            case RX_BAD_PREFIX:
-                inet6_rx_bad_prefix_count++;
-                break;
-            case RX_BAD_NEXTHOP:
-                inet6_rx_bad_nexthop_count++;
-                break;
-            case RX_BAD_AFI_SAFI:
-                inet6_rx_bad_afi_safi_count++;
-                break;
-            default:
-                break;
-            }
-        }
+        void incr_inet6_rx_bad_xml_token_count();
+        void incr_inet6_rx_bad_prefix_count();
+        void incr_inet6_rx_bad_nexthop_count();
+        void incr_inet6_rx_bad_afi_safi_count();
+        int get_inet6_rx_bad_xml_token_count() const;
+        int get_inet6_rx_bad_prefix_count() const;
+        int get_inet6_rx_bad_nexthop_count() const;
+        int get_inet6_rx_bad_afi_safi_count() const;
 
         int inet6_rx_bad_xml_token_count;
         int inet6_rx_bad_prefix_count;
         int inet6_rx_bad_nexthop_count;
         int inet6_rx_bad_afi_safi_count;
     };
-    typedef ErrorStats::ErrorType ErrorType;
 
     BgpXmppChannel(XmppChannel *, BgpServer *, BgpXmppChannelManager *);
     virtual ~BgpXmppChannel();

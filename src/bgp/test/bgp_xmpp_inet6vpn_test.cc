@@ -5289,7 +5289,6 @@ TEST_F(BgpXmppInet6Test2Peers, ImportExportWithBgpConnectLater) {
 
 class BgpXmppInet6ErrorTest : public BgpXmppInet6Test {
 protected:
-    typedef BgpXmppChannel::ErrorStats ErrorStats;
     virtual void SetUp() {
         BgpXmppInet6Test::SetUp();
 
@@ -5313,61 +5312,56 @@ protected:
 
 TEST_F(BgpXmppInet6ErrorTest, BadPrefix) {
     BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    const BgpXmppChannel::ErrorStats &err_stats = channel->error_stats();
     EXPECT_TRUE(channel != NULL);
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_PREFIX), 0);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_prefix_count(), 0);
     // Prefix has two "::"'s.
     agent_a_->AddInet6Route("blue", "2001:db8:85a3::8a2e::370:aaaa/128",
                             "192.168.1.1");
     task_util::WaitForIdle();
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_PREFIX), 1);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_prefix_count(), 1);
 }
 
 TEST_F(BgpXmppInet6ErrorTest, BadNexthop) {
     BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    const BgpXmppChannel::ErrorStats &err_stats = channel->error_stats();
     EXPECT_TRUE(channel != NULL);
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_NEXTHOP), 0);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_nexthop_count(), 0);
     // Nexthop is formatted incorrectly.
     agent_a_->AddInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
                             "192.168.11");
     task_util::WaitForIdle();
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_NEXTHOP), 1);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_nexthop_count(), 1);
 }
 
 TEST_F(BgpXmppInet6ErrorTest, BadRouteAfiSafi) {
     BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    const BgpXmppChannel::ErrorStats &err_stats = channel->error_stats();
     EXPECT_TRUE(channel != NULL);
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_AFI_SAFI), 0);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_afi_safi_count(), 0);
     // Create a route with incorrect afi.
     agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
                                  "192.168.1.1", test::ROUTE_AF_ERROR);
     task_util::WaitForIdle();
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_AFI_SAFI), 1);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_afi_safi_count(), 1);
 
     // Create a route with incorrect safi.
     agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e::370:aaaa/128",
                                  "192.168.1.1", test::ROUTE_SAFI_ERROR);
     task_util::WaitForIdle();
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_AFI_SAFI), 2);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_afi_safi_count(), 2);
 }
 
 TEST_F(BgpXmppInet6ErrorTest, BadXmlToken) {
     BgpXmppChannel *channel = bgp_channel_manager_->FindChannel("agent-a");
+    const BgpXmppChannel::ErrorStats &err_stats = channel->error_stats();
     EXPECT_TRUE(channel != NULL);
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_XML_TOKEN), 0);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_xml_token_count(), 0);
     // Create a route that sends an incorrect xml message to the controller.
     agent_a_->AddBogusInet6Route("blue", "2001:db8:85a3::8a2e:370:aaaa/128",
                                  "192.168.1.1", test::XML_TOKEN_ERROR);
     task_util::WaitForIdle();
-    TASK_UTIL_EXPECT_EQ(channel->error_stats().
-        get_rx_inet6_count(ErrorStats::RX_BAD_XML_TOKEN), 1);
+    TASK_UTIL_EXPECT_EQ(err_stats.get_inet6_rx_bad_xml_token_count(), 1);
 }
 
 class TestEnvironment : public ::testing::Environment {

@@ -210,6 +210,11 @@ public:
     virtual void UpdateTxReachRoute(uint32_t count) {
         update_stats_[1].reach += count;
     }
+
+    virtual void GetRxErrorStats(RxErrorStats &) const {
+        // Do nothing for bgp peers
+    }
+
 private:
     friend class BgpPeer;
     BgpPeer *peer_;
@@ -1434,7 +1439,6 @@ void BgpPeer::FillBgpNeighborDebugState(BgpNeighborResp &resp,
     peer_state->GetTxProtoStats(stats);
     FillProtoStats(stats, proto_stats);
     resp.set_tx_proto_stats(proto_stats);
-
 
     IPeerDebugStats::UpdateStats update_stats;
     PeerUpdateStats rt_stats;
