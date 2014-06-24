@@ -136,6 +136,35 @@ public:
         StaticRouteSet list_;
     };
 
+    struct StaticRoute6 : ListEntry {
+        StaticRoute6();
+        StaticRoute6(const StaticRoute6 &rhs);
+        StaticRoute6(const std::string &vrf, const Ip6Address &addr,
+                     uint32_t plen);
+        virtual ~StaticRoute6();
+
+        bool operator() (const StaticRoute6 &lhs, const StaticRoute6 &rhs) const;
+        bool IsLess(const StaticRoute6 *rhs) const;
+        void Activate(VmInterface *interface, bool force_update,
+                      bool policy_change) const;
+        void DeActivate(VmInterface *interface) const;
+
+        mutable std::string vrf_;
+        Ip6Address  addr_;
+        uint32_t    plen_;
+    };
+    typedef std::set<StaticRoute6, StaticRoute6> StaticRoute6Set;
+
+    struct StaticRoute6List {
+        StaticRoute6List() : list_() { }
+        ~StaticRoute6List() { }
+        void Insert(const StaticRoute6 *rhs);
+        void Update(const StaticRoute6 *lhs, const StaticRoute6 *rhs);
+        void Remove(StaticRoute6Set::iterator &it);
+
+        StaticRoute6Set list_;
+    };
+
     struct SecurityGroupEntry : ListEntry {
         SecurityGroupEntry();
         SecurityGroupEntry(const SecurityGroupEntry &rhs);
@@ -220,7 +249,8 @@ public:
         vm_project_uuid_(nil_uuid()), vxlan_id_(0), layer2_forwarding_(true),
         layer3_forwarding_(true), mac_set_(false), vlan_id_(kInvalidVlanId),
         parent_(NULL), sg_list_(), floating_ip_list_(), service_vlan_list_(),
-        static_route_list_(), vrf_assign_rule_list_(), vrf_assign_acl_(NULL) {
+        static_route_list_(), static_route6_list_(), vrf_assign_rule_list_(), 
+        vrf_assign_acl_(NULL) {
         ipv4_active_ = false;
         ipv6_active_ = false;
         l2_active_ = false;
@@ -239,8 +269,8 @@ public:
         vm_name_(vm_name), vm_project_uuid_(vm_project_uuid), vxlan_id_(0),
         layer2_forwarding_(true), layer3_forwarding_(true), mac_set_(false),
         vlan_id_(vlan_id), parent_(parent), sg_list_(), floating_ip_list_(),
-        service_vlan_list_(), static_route_list_(), vrf_assign_rule_list_(),
-        vrf_assign_acl_(NULL) {
+        service_vlan_list_(), static_route_list_(), static_route6_list_(), 
+        vrf_assign_rule_list_(), vrf_assign_acl_(NULL) {
         ipv4_active_ = false;
         ipv6_active_ = false;
         l2_active_ = false;
@@ -295,6 +325,10 @@ public:
 
     const StaticRouteList &static_route_list() const {
         return static_route_list_;
+    }
+
+    const StaticRoute6List &static_route6_list() const {
+        return static_route6_list_;
     }
 
     const SecurityGroupEntryList &sg_list() const {
@@ -372,6 +406,10 @@ private:
                   uint32_t plen, bool policy);
     void DeleteRoute(const std::string &vrf_name, const Ip4Address &ip,
                      uint32_t plen);
+    void AddRoute6(const std::string &vrf_name, const Ip6Address &ip,
+                   uint32_t plen, bool policy);
+    void DeleteRoute6(const std::string &vrf_name, const Ip6Address &ip,
+                      uint32_t plen);
     void ServiceVlanAdd(ServiceVlan &entry);
     void ServiceVlanDel(ServiceVlan &entry);
     void ServiceVlanRouteAdd(const ServiceVlan &entry);
@@ -441,7 +479,9 @@ private:
     void UpdateServiceVlan(bool force_update, bool policy_change);
     void DeleteServiceVlan();
     void UpdateStaticRoute(bool force_update, bool policy_change);
+    void UpdateStaticRoute6(bool force_update, bool policy_change);
     void DeleteStaticRoute();
+    void DeleteStaticRoute6();
     void UpdateSecurityGroup();
     void DeleteSecurityGroup();
     void UpdateL2TunnelId(bool force_update, bool policy_change);
@@ -486,6 +526,7 @@ private:
     FloatingIpList floating_ip_list_;
     ServiceVlanList service_vlan_list_;
     StaticRouteList static_route_list_;
+    StaticRoute6List static_route6_list_;
 
     // Peer for interface routes
     std::auto_ptr<LocalVmPortPeer> peer_;
@@ -597,7 +638,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         fabric_port_(true), need_linklocal_ip_(false), layer2_forwarding_(true),
         layer3_forwarding_(true), mirror_enable_(false), analyzer_name_(""),
         mirror_direction_(Interface::UNKNOWN), sg_list_(), 
-        floating_ip_list_(), service_vlan_list_(), static_route_list_() {
+        floating_ip_list_(), service_vlan_list_(), static_route_list_(),
+        static_route6_list_() {
     }
 
     VmInterfaceConfigData(const Ip4Address &addr, const std::string &mac,
@@ -608,7 +650,8 @@ struct VmInterfaceConfigData : public VmInterfaceData {
         layer2_forwarding_(true), layer3_forwarding_(true), 
         mirror_enable_(false), analyzer_name_(""),
         mirror_direction_(Interface::UNKNOWN), sg_list_(),
-        floating_ip_list_(), service_vlan_list_(), static_route_list_() {
+        floating_ip_list_(), service_vlan_list_(), static_route_list_(),
+        static_route6_list_() {
     }
 
     virtual ~VmInterfaceConfigData() { }
@@ -636,6 +679,7 @@ struct VmInterfaceConfigData : public VmInterfaceData {
     VmInterface::FloatingIpList floating_ip_list_;
     VmInterface::ServiceVlanList service_vlan_list_;
     VmInterface::StaticRouteList static_route_list_;
+    VmInterface::StaticRoute6List static_route6_list_;
     VmInterface::VrfAssignRuleList vrf_assign_rule_list_;
 };
 

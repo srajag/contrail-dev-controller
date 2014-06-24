@@ -58,7 +58,8 @@ struct ItfSandeshData {
    25: i32 l2_label;
    26: i32 vxlan_id;
    27: list<StaticRouteSandesh> static_route_list; //Static route list
-   28: string l2_active;
+   28: list<StaticRouteSandesh> static_route6_list; //Static route list
+   29: string l2_active;
    30: string vm_project_uuid; // project uuid of the vm to which the interface belongs
    31: string admin_state;
    32: i32 flow_key_idx;

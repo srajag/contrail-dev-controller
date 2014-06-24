@@ -656,6 +656,20 @@ void Interface::SetItfSandeshData(ItfSandeshData &data) const {
         }
         data.set_static_route_list(static_route_list);
 
+        std::vector<StaticRouteSandesh> static_route6_list;
+        VmInterface::StaticRoute6Set::iterator static_rt6_it =
+            vintf->static_route6_list().list_.begin();
+        while (static_rt6_it != vintf->static_route6_list().list_.end()) {
+            const VmInterface::StaticRoute6 &rt6 = *static_rt6_it;
+            StaticRouteSandesh entry;
+            entry.set_vrf_name(rt6.vrf_);
+            entry.set_ip_addr(rt6.addr_.to_string());
+            entry.set_prefix(rt6.plen_);
+            static_rt6_it++;
+            static_route6_list.push_back(entry);
+        }
+        data.set_static_route6_list(static_route6_list);
+
         if (vintf->fabric_port()) {
             data.set_fabric_port("FabricPort");
         } else {
