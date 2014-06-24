@@ -181,14 +181,23 @@ static void BuildStaticRouteList(VmInterfaceConfigData *data, IFMapNode *node) {
     for (std::vector<RouteType>::const_iterator it = entry->routes().begin();
          it != entry->routes().end(); it++) {
         int plen;
-        Ip4Address ip(0);
+        Ip6Address ip6;
         boost::system::error_code ec;
-        ec = Ip4PrefixParse(it->prefix, &ip, &plen);
+
+        Ip4Address ip4;
+        ec = Ip4PrefixParse(it->prefix, &ip4, &plen);
         if (ec.value() == 0) {
             data->static_route_list_.list_.insert
-                (VmInterface::StaticRoute(data->vrf_name_, ip, plen));
+                (VmInterface::StaticRoute(data->vrf_name_, ip4, plen));
         } else {
-            LOG(DEBUG, "Error decoding Static Route IP address " << ip);
+            Ip6Address ip6;
+            ec = Inet6PrefixParse(it->prefix, &ip6, &plen);
+            if (ec.value() == 0) {
+                data->static_route6_list_.list_.insert
+                    (VmInterface::StaticRoute6(data->vrf_name_, ip6, plen));
+            } else {
+                LOG(DEBUG, "Error decoding Static Route address " << it->prefix);
+            }
         }
     }
 }
@@ -801,6 +810,15 @@ bool VmInterface::CopyConfig(VmInterfaceConfigData *data, bool *sg_changed) {
         ret = true;
     }
 
+    // Audit operational and config Static Route6 list
+    StaticRoute6Set &old_route6_list = static_route6_list_.list_;
+    StaticRoute6Set &new_route6_list = data->static_route6_list_.list_;
+    if (AuditList<StaticRoute6List, StaticRoute6Set::iterator>
+        (static_route6_list_, old_route6_list.begin(), old_route6_list.end(),
+         new_route6_list.begin(), new_route6_list.end())) {
+        ret = true;
+    }
+
     // Audit operational and config Security Group list
     SecurityGroupEntrySet &old_sg_list = sg_list_.list_;
     SecurityGroupEntrySet &new_sg_list = data->sg_list_.list_;
@@ -838,6 +856,7 @@ void VmInterface::UpdateL3(bool old_ipv4_active, VrfEntry *old_vrf,
         UpdateFloatingIp(force_update, policy_change);
         UpdateServiceVlan(force_update, policy_change);
         UpdateStaticRoute(force_update, policy_change);
+        UpdateStaticRoute6(force_update, policy_change);
         UpdateVrfAssignRule();
     }
     if (ipv6_active_) {
@@ -860,6 +879,7 @@ void VmInterface::DeleteL3(bool old_ipv4_active, VrfEntry *old_vrf,
     DeleteFloatingIp();
     DeleteServiceVlan();
     DeleteStaticRoute();
+    DeleteStaticRoute6();
     DeleteSecurityGroup();
     DeleteL3TunnelId();
     DeleteVrfAssignRule();
@@ -1495,6 +1515,19 @@ void VmInterface::UpdateStaticRoute(bool force_update, bool policy_change) {
     }
 }
 
+void VmInterface::UpdateStaticRoute6(bool force_update, bool policy_change) {
+    StaticRoute6Set::iterator it = static_route6_list_.list_.begin();
+    while (it != static_route6_list_.list_.end()) {
+        StaticRoute6Set::iterator prev = it++;
+        if (prev->del_pending_) {
+            prev->DeActivate(this);
+            static_route6_list_.list_.erase(prev);
+        } else {
+            prev->Activate(this, force_update, policy_change);
+        }
+    }
+}
+
 void VmInterface::DeleteStaticRoute() {
     StaticRouteSet::iterator it = static_route_list_.list_.begin();
     while (it != static_route_list_.list_.end()) {
@@ -1502,6 +1535,17 @@ void VmInterface::DeleteStaticRoute() {
         prev->DeActivate(this);
         if (prev->del_pending_) {
             static_route_list_.list_.erase(prev);
+        }
+    }
+}
+
+void VmInterface::DeleteStaticRoute6() {
+    StaticRoute6Set::iterator it = static_route6_list_.list_.begin();
+    while (it != static_route6_list_.list_.end()) {
+        StaticRoute6Set::iterator prev = it++;
+        prev->DeActivate(this);
+        if (prev->del_pending_) {
+            static_route6_list_.list_.erase(prev);
         }
     }
 }
@@ -1735,6 +1779,28 @@ void VmInterface::DeleteRoute(const std::string &vrf_name,
     return;
 }
 
+//Add a route for VM port
+//If ECMP route, add new composite NH and mpls label for same
+void VmInterface::AddRoute6(const std::string &vrf_name, const Ip6Address &addr,
+                            uint32_t plen, bool policy) {
+    SecurityGroupList sg_id_list;
+    CopySgIdList(&sg_id_list);
+    Inet6UnicastAgentRouteTable::AddLocalVmRoute(peer_.get(), vrf_name, addr,
+                                                 plen, GetUuid(),
+                                                 vn_->GetName(), label_,
+                                                 sg_id_list, false);
+
+    return;
+}
+
+void VmInterface::DeleteRoute6(const std::string &vrf_name,
+                               const Ip6Address &addr, uint32_t plen) {
+    Inet6UnicastAgentRouteTable::Delete(peer_.get(), vrf_name, addr, plen);
+    return;
+}
+
+
+
 void VmInterface::UpdateL3Services(bool val) {
     dhcp_enabled_ = val;
     dns_enabled_ = val;
@@ -1906,6 +1972,83 @@ void VmInterface::StaticRouteList::Update(const StaticRoute *lhs,
 }
 
 void VmInterface::StaticRouteList::Remove(StaticRouteSet::iterator &it) {
+    it->set_del_pending(true);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// StaticRoute6 routines
+/////////////////////////////////////////////////////////////////////////////
+VmInterface::StaticRoute6::StaticRoute6() :
+    ListEntry(), vrf_(""), addr_(), plen_(0) {
+}
+
+VmInterface::StaticRoute6::StaticRoute6(const StaticRoute6 &rhs) :
+    ListEntry(rhs.installed_, rhs.del_pending_), vrf_(rhs.vrf_),
+    addr_(rhs.addr_), plen_(rhs.plen_) {
+}
+
+VmInterface::StaticRoute6::StaticRoute6(const std::string &vrf,
+                                        const Ip6Address &addr,
+                                        uint32_t plen) :
+    ListEntry(), vrf_(vrf), addr_(addr), plen_(plen) {
+}
+
+VmInterface::StaticRoute6::~StaticRoute6() {
+}
+
+bool VmInterface::StaticRoute6::operator() (const StaticRoute6 &lhs,
+                                            const StaticRoute6 &rhs) const {
+    return lhs.IsLess(&rhs);
+}
+
+bool VmInterface::StaticRoute6::IsLess(const StaticRoute6 *rhs) const {
+#if 0
+    //Enable once we can add static routes across vrf
+    if (vrf_name_ != rhs->vrf_name_)
+        return vrf_name_ < rhs->vrf_name_;
+#endif
+
+    if (addr_ != rhs->addr_)
+        return addr_ < rhs->addr_;
+
+    return plen_ < rhs->plen_;
+}
+
+void VmInterface::StaticRoute6::Activate(VmInterface *interface,
+                                         bool force_update,
+                                         bool policy_change) const {
+    if (installed_ && force_update == false && policy_change == false)
+        return;
+
+    if (vrf_ != interface->vrf()->GetName()) {
+        vrf_ = interface->vrf()->GetName();
+    }
+
+    if (installed_ == true && policy_change) {
+        Inet6UnicastAgentRouteTable::ReEvaluatePaths(vrf_, addr_, plen_);
+    } else if (installed_ == false || force_update) {
+        interface->AddRoute6(vrf_, addr_, plen_, interface->policy_enabled());
+    }
+
+    installed_ = true;
+}
+
+void VmInterface::StaticRoute6::DeActivate(VmInterface *interface) const {
+    if (installed_ == false)
+        return;
+    interface->DeleteRoute6(vrf_, addr_, plen_);
+    installed_ = false;
+}
+
+void VmInterface::StaticRoute6List::Insert(const StaticRoute6 *rhs) {
+    list_.insert(*rhs);
+}
+
+void VmInterface::StaticRoute6List::Update(const StaticRoute6 *lhs,
+                                           const StaticRoute6 *rhs) {
+}
+
+void VmInterface::StaticRoute6List::Remove(StaticRoute6Set::iterator &it) {
     it->set_del_pending(true);
 }
 
